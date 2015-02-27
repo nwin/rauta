@@ -1,0 +1,9 @@
+[package]
+
+name = "rauta"
+version = "0.0.1"
+authors = ["nwin <nwin@users.noreply.github.com>"]
+
+[dependencies]
+log = "*"
+env_logger = "*"
