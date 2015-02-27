@@ -97,7 +97,7 @@ impl Client {
             for event in rx.iter() {
                 match event {
                     Event::RawMessage(msg) => {
-                        debug!("sending message {}", String::from_utf8_lossy(msg.as_slice()));
+                        debug!(" sending message {}", String::from_utf8_lossy(msg.as_slice()));
                         output_stream.write_all(&*msg).unwrap();
                         output_stream.write_all(b"\r\n").unwrap();
                         output_stream.flush().unwrap();

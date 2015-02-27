@@ -56,7 +56,12 @@ impl Server {
         for event in try!(self.listen()).1.iter() {
             match event {
                 InboundMessage(id, msg) => {
-                    handler::invoke(msg, &self, &self.clients[id]);
+                    if let Some(client) = self.clients.get(&id) {
+                        if let Err((code, msg)) = handler::invoke(msg, &self, client) {
+                            self.send_response(client, code, &[msg.as_bytes()])
+                        }
+                    }
+                    
                 }
                 Connected(client) => {
                     let id = client.id();
