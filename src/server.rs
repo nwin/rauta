@@ -6,14 +6,17 @@ use std::old_io::net::tcp::{TcpListener, TcpStream};
 use std::sync::Arc;
 use std::sync::mpsc::{Sender, Receiver, channel};
 use std::thread::spawn;
+use std::collections::HashMap;
 
 use protocol::{Command, ResponseCode, Message};
 use client::{ClientId, Client};
+use message::handler;
 
 pub struct Server {
     host: String,
     ip: String,
     port: u16,
+    clients: HashMap<ClientId, Client>,
 }
 
 pub enum Event {
@@ -42,7 +45,26 @@ impl Server {
             host: host.to_string(),
             ip: format!("{}", ip),
             port: 6667,
+            clients: HashMap::new()
         })
+    }
+    
+    /// Starts the main loop and listens on the specified host and port.
+    pub fn serve_forever(mut self) -> IoResult<Server> {
+        use self::Event::{Connected, InboundMessage};
+        // todo change this to a more general event dispatching loop
+        for event in try!(self.listen()).1.iter() {
+            match event {
+                InboundMessage(id, msg) => {
+                    handler::invoke(msg, &self, &self.clients[id]);
+                }
+                Connected(client) => {
+                    let id = client.id();
+                    self.clients.insert(id, client);
+                }
+            }
+        }
+        Ok(self)
     }
 
     fn listen(&self) -> IoResult<(Sender<Event>, Receiver<Event>)>  {
@@ -56,12 +78,9 @@ impl Server {
             for maybe_stream in acceptor.incoming() {
                 match maybe_stream {
                     Err(err) => { error!("{}", err) }
-                    Ok(stream) => {
-                        let host = host.clone();
-                        let tx = tx.clone();
-                        spawn(move || {
-                            Client::communicate(stream, tx, host)
-                        });
+                    Ok(stream) =>  match Client::listen(stream, tx.clone(), host.clone()) {
+                        Ok(()) => {},
+                        Err(err) => error!("{}", err)
                     }
                 }
             }

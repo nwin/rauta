@@ -37,18 +37,18 @@ impl fmt::Display for Command {
 }}
 
 commands!{
-    PRIVMSG     #[doc = "`PRIVMSG` command"];
-    NOTICE      #[doc = "`NOTICE` command"];
-    MODE        #[doc = "`MODE` command"];
-    JOIN        #[doc = "`JOIN` command, see http://tools.ietf.org/html/rfc1459.html#section-4.2.1"];
-    PING        #[doc = "`PING` command"];
-    WHO         #[doc = "`WHO` command"];
-    NAMES       #[doc = "`NAMES` command"];
-    TOPIC       #[doc = "`TOPIC` command"];
-    PART        #[doc = "`PART` command"];
-    QUIT        #[doc = "`QUIT` command"];
-    PONG        #[doc = "`PONG` command"];
-    NICK        #[doc = "`NICK` command"];
-    USER        #[doc = "`USER` command"];
+    //PRIVMSG     #[doc = "`PRIVMSG` command"];
+    //NOTICE      #[doc = "`NOTICE` command"];
+    //MODE        #[doc = "`MODE` command"];
+    //JOIN        #[doc = "`JOIN` command, see http://tools.ietf.org/html/rfc1459.html#section-4.2.1"];
+    //PING        #[doc = "`PING` command"];
+    //WHO         #[doc = "`WHO` command"];
+    //NAMES       #[doc = "`NAMES` command"];
+    //TOPIC       #[doc = "`TOPIC` command"];
+    //PART        #[doc = "`PART` command"];
+    //QUIT        #[doc = "`QUIT` command"];
+    //PONG        #[doc = "`PONG` command"];
+    //NICK        #[doc = "`NICK` command"];
+    //USER        #[doc = "`USER` command"];
     CAP         #[doc = "`CAP` command"];
 }

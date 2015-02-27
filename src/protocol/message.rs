@@ -1,6 +1,7 @@
 use std::ops::Range;
 use std::ascii::AsciiExt;
 use std::fmt;
+use std::ops;
 
 /// An irc message
 #[derive(Clone)]
@@ -124,9 +125,12 @@ impl Message {
             i: 0 - 1
         }
     }
+}
 
-    /// Returns the raw message as a slice.
-    pub fn as_slice(&self) -> &[u8] {
+impl ops::Deref for Message {
+    type Target = [u8];
+
+    fn deref(&self) -> &[u8] {
         &self.message
     }
 }
@@ -165,7 +169,7 @@ impl<'a> Iterator for Params<'a> {
 #[cfg(test)]
 mod tests {
     extern crate test;
-	use super::{Message};
+	use super::Message;
 	/// Test the nickname validation function
 	#[test]
 	fn test_message_parser() {

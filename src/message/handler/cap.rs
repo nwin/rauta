@@ -9,7 +9,8 @@ use super::MessageHandler;
 
 /// Handler for CAP command.
 /// CAP subcommand [params]
-pub struct CapHandler {
+#[derive(Debug)]
+pub struct Handler {
     msg: Message,
     args: Option<RangeFrom<usize>>
 }
@@ -55,8 +56,8 @@ impl Subcommand {
     }
 }
 
-impl MessageHandler for CapHandler {
-    fn from_message(message: Message) -> Result<CapHandler, (ResponseCode, String)> {
+impl MessageHandler for Handler {
+    fn from_message(message: Message) -> Result<Handler, (ResponseCode, String)> {
         let args = {
             let mut params = message.params();
             if let Some(ref param) = params.next() {
@@ -83,12 +84,12 @@ impl MessageHandler for CapHandler {
                 None
             }
         };
-        Ok(CapHandler {
+        Ok(Handler {
             msg: message,
             args: args
         })
     }
-    fn invoke(&self, server: &mut Server, client: &mut Client) {
+    fn invoke(&self, server: &Server, client: &Client) {
         match self.subcmd() {
             LS => {
                 server.send_msg(client, CAP, &[Subcommand::LIST.as_bytes()])
@@ -98,7 +99,7 @@ impl MessageHandler for CapHandler {
     }
 }
 
-impl CapHandler {
+impl Handler {
     fn subcmd(&self) -> Subcommand {
         Subcommand::from_slice(self.msg.params().nth(0).unwrap()).unwrap()
     }
