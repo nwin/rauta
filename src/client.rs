@@ -108,8 +108,10 @@ impl Client {
         Ok(())
     }
     
-    pub fn send_response(&self, code: ResponseCode, payload: &[&[u8]]) {
-        self.send_msg(Command::RESPONSE(code), payload);
+    pub fn send_response(&self, code: ResponseCode, payload: &[&str]) {
+        use std::mem;
+        // Unfortunately there is no other way to efficiently convert &[&str] to &[&[u8]]
+        self.send_msg(Command::RESPONSE(code), unsafe { mem::transmute(payload) });
     }
     
     pub fn send_msg(&self, cmd: Command, payload: &[&[u8]]) {
@@ -168,6 +170,8 @@ macro_rules! guard {
     }
 }
 
+/// A wrapped RwLockReadGuard that only allows access to a part of the guarded
+/// struct
 struct FragmentReadGuard<'a, T: 'a, R: ?Sized + 'a> {
     guard: RwLockReadGuard<'a, T>,
     ptr: &'a R
@@ -179,7 +183,13 @@ impl<'a, T, R: ?Sized> FragmentReadGuard<'a, T, R> {
              -> FragmentReadGuard<'a, T, R>
              where F: Fn(&'a RwLockReadGuard<'a, T>) -> &'a R
     {
-        let ptr = get_fragment(unsafe{ &*(&guard as *const RwLockReadGuard<'a, T>) });
+
+        // This works because ptr is not a reference into the guard
+        // but into the guarded object. Thus moving the guard does not
+        // invalidate the pointer.
+        let ptr = get_fragment(
+            unsafe{ &*(&guard as *const RwLockReadGuard<'a, T>) }
+        );
         FragmentReadGuard {
             guard: guard,
             ptr: ptr,

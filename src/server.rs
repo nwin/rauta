@@ -58,7 +58,7 @@ impl Server {
                 InboundMessage(id, msg) => {
                     if let Some(client) = self.clients.get(&id) {
                         if let Err((code, msg)) = handler::invoke(msg, &self, client) {
-                            self.send_response(client, code, &[msg.as_bytes()])
+                            self.send_response(client, code, &[&*msg])
                         }
                     }
                     
@@ -94,7 +94,7 @@ impl Server {
     }
 
     /// Sends a response to the client
-    pub fn send_response(&self, client: &Client, code: ResponseCode, payload: &[&[u8]]) {
+    pub fn send_response(&self, client: &Client, code: ResponseCode, payload: &[&str]) {
         client.send_response(code, payload);
     }
 
