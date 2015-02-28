@@ -1,4 +1,3 @@
-use std::ops::RangeFrom;
 use std::ascii::AsciiExt;
 use protocol::{ResponseCode, Message};
 use protocol::ResponseCode::*;
@@ -12,7 +11,7 @@ use super::{MessageHandler, ErrorMessage};
 #[derive(Debug)]
 pub struct Handler {
     msg: Message,
-    args: Option<RangeFrom<usize>>
+    args: Option<usize>
 }
 
 /// CAP subcommands
@@ -40,7 +39,7 @@ impl Subcommand {
             _ => return None
         })
     }
-    fn as_slice(&self) -> &str {
+    fn as_slice(&self) -> &'static str {
         match *self {
             LS => "LS",
             LIST => "LIST",
@@ -51,7 +50,7 @@ impl Subcommand {
             END => "END"
         }
     }
-    fn as_bytes(&self) -> &[u8] {
+    fn as_bytes(&self) -> &'static [u8] {
         self.as_slice().as_bytes()
     }
 }
@@ -79,7 +78,7 @@ impl MessageHandler for Handler {
                         )))
                     }
                 }
-                Some(1..)
+                Some(1)
             } else {
                 None
             }
@@ -90,10 +89,18 @@ impl MessageHandler for Handler {
         })
     }
     fn invoke(self, server: &mut Server, client: Client) {
+        use self::Subcommand::*;
         match self.subcmd() {
-            LS => {
-                server.send_msg(&client, CAP, &[Subcommand::LIST.as_bytes()])
-            },
+            LS => server.send_msg(&client, CAP, &[LS.as_bytes()]),
+            LIST => server.send_msg(&client, CAP, &[LIST.as_bytes()]),
+            REQ => {
+                if let Some(args) = self.args {
+                    server.send_msg(&client, CAP, &[NAK.as_bytes(), self.msg.params().nth(args).unwrap()])
+                } else {
+                    server.send_msg(&client, CAP, &[NAK.as_bytes()])
+                }
+            }
+            
             _ => {} // ignore other commands
         }
     }

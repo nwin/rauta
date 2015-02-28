@@ -6,6 +6,7 @@
 #![feature(old_io)]
 #![feature(alloc)]
 #![feature(std_misc)]
+#![feature(core)]
 #![feature(box_syntax)]
 #![allow(dead_code)]
 #![allow(unused_imports)]
@@ -14,6 +15,7 @@
 #[macro_use]
 extern crate log;
 extern crate env_logger;
+
 
 pub mod net;
 pub mod protocol;

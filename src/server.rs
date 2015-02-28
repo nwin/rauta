@@ -134,5 +134,7 @@ pub fn get_test_server() -> Server {
         host: "testserver.example.com".to_string(),
         ip: "127.0.0.1".to_string(),
         port: 0,
+        clients: HashMap::new(),
+        nicks: HashMap::new()
     }
 }

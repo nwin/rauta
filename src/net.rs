@@ -63,9 +63,11 @@ fn new_sockaddr_in6(port: u16, addr: in6_addr) -> sockaddr_in6 {
     }
 }
 
-//static NI_NUMERICHOST: c_int = 0x00000002;
-//static NI_NAMEREQD: c_int = 0x00000004;
-
+//static NI_NOFQDN   : c_int = 0x00000001;
+//static NI_NUMERICHOST  : c_int = 0x00000002;
+//static NI_NAMEREQD : c_int = 0x00000004;
+//static NI_NUMERICSERV  : c_int = 0x00000008;
+//static NI_DGRAM    : c_int = 0x00000010;
 /// Returns the hostname for an ip address
 /// TODO: make this safe, see manpage
 const HOSTLEN: usize = 80;
