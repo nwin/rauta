@@ -1,5 +1,4 @@
 use std::str;
-use std::mem;
 use std::collections::hash_map::Entry::{Occupied, Vacant};
 
 use protocol::{ResponseCode, Message};
@@ -59,10 +58,10 @@ impl MessageHandler for Handler {
             ),
             Vacant(entry) => {
                 entry.insert(client.id());
-                let old_nick = mem::replace(&mut client.info_mut().nick, nick.to_string());
-                if old_nick == "*" && client.info().status == Status::RegistrationPending {
+                let old_nick = client.info_mut().set_nick(nick.to_string());
+                if old_nick == "*" && client.info().status() == Status::RegistrationPending {
                     {
-                        client.info_mut().status = Status::Registered
+                        client.info_mut().set_status(Status::Registered)
                     }
                     unsafe {&*(server as *mut Server)}.register(&client)
                 }

@@ -172,7 +172,7 @@ mod tests {
 	use super::Message;
 	/// Test the nickname validation function
 	#[test]
-	fn test_message_parser() {
+	fn message_parser() {
         let m = Message::new("@tag :prefix JOIN #channel".as_bytes().to_vec()).unwrap();
         assert_eq!(m.prefix().unwrap(), b"prefix");
         assert_eq!(m.command(), "JOIN");

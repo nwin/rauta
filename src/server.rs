@@ -111,9 +111,9 @@ impl Server {
         let info = client.info();
         self.send_response(client, ResponseCode::RPL_WELCOME, &[&*format!(
             "Welcome to the Internet Relay Network {nick}!{user}@{host}", 
-            nick=info.nick,
-            user=info.user,
-            host=info.host
+            nick=info.nick(),
+            user=info.user(),
+            host=info.host()
         )])
     }
 

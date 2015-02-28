@@ -44,21 +44,22 @@ impl MessageHandler for Handler {
     fn invoke(self, server: &mut Server, client: Client) {
         let reg_new = {
             let ref mut info = client.info_mut();
-            if info.status != Status::Registered {
-                info.user = self.username;
-                info.realname = self.realname;
-                info.status = if info.nick == "*" {
+            if info.status() != Status::Registered {
+                info.set_user(self.username);
+                info.set_realname(self.realname);
+                let status = if info.nick() == "*" {
                     Status::RegistrationPending
                 } else {
                     Status::Registered
                 };
+                info.set_status(status);
                 true
             } else {
                 false
             }
         };
         let nick_ok = {
-            client.info().nick != "*"
+            client.info().nick() != "*"
         };
         if nick_ok && reg_new {
             server.register(&client)

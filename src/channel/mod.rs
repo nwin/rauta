@@ -1,4 +1,4 @@
-//mod member;
+mod member;
 use std::collections::HashSet;
 use std::num::FromPrimitive;
 
@@ -128,7 +128,6 @@ where Block: FnMut(Action, ChannelMode, Option<&[u8]>) {
             block(action, mode, param);
         }
 	}
-
 }
 
 /// List of channel modes / member flags
@@ -154,7 +153,7 @@ mod tests {
     
     
 	#[test]
-	fn test_mode_parser() {
+	fn mode_parser() {
         let msgs = [
             b"MODE &oulu +b *!*@*.edu +e *!*@*.bu.edu",
             b"MODE #bu +be *!*@*.edu *!*@*.bu.edu",

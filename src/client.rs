@@ -68,13 +68,7 @@ impl Client {
         // this has to be sended first otherwise we have a nice race conditions
         let client = Client {
             id: id,
-            info: Arc::new(RwLock::new(User {
-                nick: "*".to_string(),
-                user: "".to_string(),
-                host: client_hostname,
-                realname: "".to_string(),
-                status: Status::Connected,
-            })),
+            info: Arc::new(RwLock::new(User::new(client_hostname))),
             hostname: hostname.clone(),
             channel: msg_tx
         };
@@ -87,7 +81,7 @@ impl Client {
                 match line.map(|l| Message::new(l.trim_right().as_bytes().to_vec())) {
                     Ok(Ok(msg)) => {
                         debug!("received message {}", String::from_utf8_lossy(&*msg));
-                        if client.info().status != Status::Registered {
+                        if client.info().status() != Status::Registered {
                             use protocol::Command::{CAP, NICK, USER};
                             match Command::from_message(&msg) {
                                 Some(CAP) | Some(NICK) | Some(USER) => (),
@@ -181,7 +175,12 @@ impl Client {
 
     /// Getter for user name
     pub fn nick(&self) -> FragmentReadGuard<User, str> {
-        FragmentReadGuard::new(self.info(), |g| &*g.nick)
+        FragmentReadGuard::new(self.info(), |g| g.nick())
+    }
+
+    /// Getter for host name
+    pub fn hostname(&self) -> &Arc<String> {
+        &self.hostname
     }
 }
 
