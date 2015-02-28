@@ -24,8 +24,8 @@ impl MessageHandler for Handler {
             let (username, realname) = {
                 let mut params = message.params();
                 (
-                    String::from_utf8_lossy(params.next().unwrap()).to_string(),
-                    String::from_utf8_lossy(params.nth(2).unwrap()).to_string()
+                    String::from_utf8_lossy(params.next().unwrap()).into_owned(),
+                    String::from_utf8_lossy(params.nth(2).unwrap()).into_owned()
                 )
             };
             Ok(Handler {
@@ -40,6 +40,30 @@ impl MessageHandler for Handler {
             ))
         }
     }
-    fn invoke(&self, server: &mut Server, client: Client) {
+    fn invoke(self, server: &mut Server, client: Client) {
+        let reg_new = {
+            let ref mut info = client.info_mut();
+            if !info.registered {
+                info.user = self.username;
+                info.realname = self.realname;
+                info.registered = true;
+                true
+            } else {
+                false
+            }
+        };
+        let nick_ok = {
+            client.info().nick != "*"
+        };
+        if nick_ok && reg_new {
+            server.register(&client)
+        } else if !reg_new {
+            server.send_response(
+                &client, 
+                ERR_ALREADYREGISTRED, 
+                &["Unauthorized command (already registered)"]
+            )
+        }
+        
     }
 }

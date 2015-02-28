@@ -50,7 +50,7 @@ impl ClientId {
 #[derive(Clone)]
 pub struct Client {
     id: ClientId,
-    info: Arc<RwLock<User>>,
+    pub info: Arc<RwLock<User>>,
     hostname: Arc<String>,
     channel: Sender<Event>, 
 }
@@ -66,12 +66,19 @@ impl Client {
         debug!("hostname of client is {}", client_hostname.clone());
         let receiving_stream = stream.clone();
         // this has to be sended first otherwise we have a nice race conditions
-        let _ = server_tx.send(server::Event::Connected(Client {
+        let client = Client {
             id: id,
-            info: Arc::new(RwLock::new(User {name: "*".to_string()})),
+            info: Arc::new(RwLock::new(User {
+                nick: "*".to_string(),
+                user: "".to_string(),
+                host: client_hostname,
+                realname: "".to_string(),
+                registered: false
+            })),
             hostname: hostname.clone(),
             channel: msg_tx
-        }));
+        };
+        let _ = server_tx.send(server::Event::Connected(client.clone()));
         spawn(move || {
             // TODO: write a proper 510 char line iterator
             // as it is now it is probably very slow
@@ -81,6 +88,18 @@ impl Client {
                 .trim_right().as_bytes().to_vec()) {
                     Ok(msg) => {
                         debug!("received message {}", String::from_utf8_lossy(&*msg));
+                        if !client.info().registered {
+                            use protocol::Command::{CAP, NICK, USER};
+                            match Command::from_message(&msg) {
+                                Some(CAP) | Some(NICK) | Some(USER) => (),
+                                Some(cmd) => {
+                                    // User is not registered, ignore other messages for now
+                                    debug!("user not registered ignored {} message", cmd);
+                                    continue
+                                }
+                                _ => ()
+                            }
+                        }
                         // TODO: handle error here
                         let _ = server_tx.send(server::Event::InboundMessage(id, msg));
                     },
@@ -117,7 +136,7 @@ impl Client {
         let mut msg = format!(":{prefix} {cmd} {user}", 
                               prefix=&*self.hostname,
                               cmd=cmd,
-                              user=&*self.name()
+                              user=&*self.nick()
         ).into_bytes();
         if payload.len() > 0 {
             let last = payload.len() - 1;
@@ -162,8 +181,8 @@ impl Client {
     }
 
     /// Getter for user name
-    pub fn name(&self) -> FragmentReadGuard<User, str> {
-        FragmentReadGuard::new(self.info(), |g| &*g.name)
+    pub fn nick(&self) -> FragmentReadGuard<User, str> {
+        FragmentReadGuard::new(self.info(), |g| &*g.nick)
     }
 }
 

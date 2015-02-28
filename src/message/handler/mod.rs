@@ -11,7 +11,7 @@ mod user;
 
 pub trait MessageHandler {
     fn from_message(message: Message) -> Result<Self, (ResponseCode, ErrorMessage)>;
-    fn invoke(&self, server: &mut Server, client: Client);
+    fn invoke(self, server: &mut Server, client: Client);
 }
 
 pub enum ErrorMessage {

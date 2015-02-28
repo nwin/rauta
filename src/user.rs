@@ -2,5 +2,9 @@
 
 #[derive(Debug)]
 pub struct User {
-    pub name: String
+    pub nick: String,
+    pub user: String,
+    pub host: String,
+    pub realname: String,
+    pub registered: bool
 }

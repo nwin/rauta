@@ -89,7 +89,7 @@ impl MessageHandler for Handler {
             args: args
         })
     }
-    fn invoke(&self, server: &mut Server, client: Client) {
+    fn invoke(self, server: &mut Server, client: Client) {
         match self.subcmd() {
             LS => {
                 server.send_msg(&client, CAP, &[Subcommand::LIST.as_bytes()])

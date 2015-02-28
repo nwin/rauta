@@ -102,6 +102,21 @@ impl Server {
         client.send_msg(cmd, payload);
     }
 
+    pub fn register(&self, client: &Client) {
+        self.send_welcome_msg(client)
+    }
+    
+    /// Sends a welcome message to a newly registered client
+    fn send_welcome_msg(&self, client: &Client) {
+        let info = client.info();
+        client.send_response(ResponseCode::RPL_WELCOME, &[&*format!(
+            "Welcome to the Internet Relay Network {nick}!{user}@{host}", 
+            nick=info.nick,
+            user=info.user,
+            host=info.host
+        )])
+    }
+
     /// Getter for nicks
     pub fn nicks(&self) ->  &HashMap<String, ClientId> {
         &self.nicks
