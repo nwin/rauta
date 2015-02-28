@@ -1,4 +1,4 @@
-//! A library for parsing irc messages
+//! A IRC server
 
 #![feature(collections)]
 #![feature(test)]
@@ -14,13 +14,13 @@
 extern crate log;
 extern crate env_logger;
 
-mod net;
-mod protocol;
-mod server;
-mod message;
-mod client;
-mod user;
-mod channel;
+pub mod net;
+pub mod protocol;
+pub mod server;
+pub mod message;
+pub mod client;
+pub mod user;
+pub mod channel;
 
 #[cfg(test)]
 mod test;

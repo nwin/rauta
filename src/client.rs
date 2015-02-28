@@ -197,7 +197,7 @@ macro_rules! guard {
 
 /// A wrapped RwLockReadGuard that only allows access to a part of the guarded
 /// struct
-struct FragmentReadGuard<'a, T: 'a, R: ?Sized + 'a> {
+pub struct FragmentReadGuard<'a, T: 'a, R: ?Sized + 'a> {
     guard: RwLockReadGuard<'a, T>,
     ptr: &'a R
 }

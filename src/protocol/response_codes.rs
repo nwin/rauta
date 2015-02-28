@@ -2,18 +2,18 @@
 #[derive(Copy, Debug)]
 /// Response codes defined by the IRC protocol.
 pub enum ResponseCode {
-    /// Welcome to the Internet Relay Network <nick>!<user>@<host>
+    /// `Welcome to the Internet Relay Network <nick>!<user>@<host>`
     RPL_WELCOME = 001,
-    /// <subcommand> :<reason>  
+    /// `<subcommand> :<reason>`
     ERR_INVALIDCAPCMD = 410,
-    /// :No nickname given  
+    /// `:No nickname given`
     ERR_NONICKNAMEGIVEN = 431,
-    /// <nick> :Erroneous nickname
+    /// `<nick> :Erroneous nickname`
     ERR_ERRONEUSNICKNAME = 432,
-    /// <nick> :Nickname is already in use
+    /// `<nick> :Nickname is already in use`
     ERR_NICKNAMEINUSE = 433,
-    /// <command> :Not enough parameters
+    /// `<command> :Not enough parameters`
     ERR_NEEDMOREPARAMS = 461,
-    /// :Unauthorized command (already registered)
+    /// `:Unauthorized command (already registered)`
     ERR_ALREADYREGISTRED = 462
 }

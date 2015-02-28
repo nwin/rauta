@@ -12,12 +12,12 @@ macro_rules! commands {
 #[derive(Debug)]
 pub enum Command {
     $(#[$doc] $ident,)*
-    ///// Numeric reply codes, see `ResponseCode`
+    /// Numeric reply codes, see `ResponseCode`
     RESPONSE(ResponseCode)
 }
 
 impl Command {
-    /// Converts bytestring to Command 
+    /// Extracts the command from a Message. 
     pub fn from_message(message: &Message) -> Option<Command> {
         // TODO add REPLY(...)
         $(if message.command() == stringify!($ident) { Some(Command::$ident) } else)* {
@@ -48,7 +48,7 @@ commands!{
     //PART        #[doc = "`PART` command"];
     //QUIT        #[doc = "`QUIT` command"];
     //PONG        #[doc = "`PONG` command"];
-    NICK        #[doc = "NICK <nickname> [ <hopcount> ]"];
-    USER        #[doc = "USER <username> <hostname> <servername> <realname>"];
-    CAP         #[doc = "CAP <subcommand> [ <param> ]"];
+    NICK        #[doc = "`NICK <nickname> [ <hopcount> ]`"];
+    USER        #[doc = "`USER <username> <hostname> <servername> <realname>`"];
+    CAP         #[doc = "`CAP <subcommand> [ <param> ]`"];
 }
