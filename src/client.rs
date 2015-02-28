@@ -10,7 +10,7 @@ use std::old_io::net::ip::IpAddr;
 use std::thread::spawn;
 
 use server;
-use user::User;
+use user::{User, Status};
 use protocol::Message;
 use protocol::{Command, ResponseCode};
 
@@ -73,7 +73,7 @@ impl Client {
                 user: "".to_string(),
                 host: client_hostname,
                 realname: "".to_string(),
-                registered: false
+                status: Status::Connected,
             })),
             hostname: hostname.clone(),
             channel: msg_tx
@@ -88,7 +88,7 @@ impl Client {
                 .trim_right().as_bytes().to_vec()) {
                     Ok(msg) => {
                         debug!("received message {}", String::from_utf8_lossy(&*msg));
-                        if !client.info().registered {
+                        if client.info().status != Status::Registered {
                             use protocol::Command::{CAP, NICK, USER};
                             match Command::from_message(&msg) {
                                 Some(CAP) | Some(NICK) | Some(USER) => (),

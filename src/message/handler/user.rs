@@ -8,6 +8,7 @@ use protocol::Command::USER;
 use client::Client;
 use server::Server;
 use super::{MessageHandler, ErrorMessage};
+use user::Status;
 
 /// Handler for NICK command.
 /// NICK nickname
@@ -43,10 +44,14 @@ impl MessageHandler for Handler {
     fn invoke(self, server: &mut Server, client: Client) {
         let reg_new = {
             let ref mut info = client.info_mut();
-            if !info.registered {
+            if info.status != Status::Registered {
                 info.user = self.username;
                 info.realname = self.realname;
-                info.registered = true;
+                info.status = if info.nick == "*" {
+                    Status::RegistrationPending
+                } else {
+                    Status::Registered
+                };
                 true
             } else {
                 false

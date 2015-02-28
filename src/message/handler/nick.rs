@@ -6,6 +6,8 @@ use protocol::{ResponseCode, Message};
 use protocol::ResponseCode::*;
 use client::Client;
 use server::Server;
+use user::Status;
+
 use super::{MessageHandler, ErrorMessage};
 
 /// Handler for NICK command.
@@ -58,7 +60,10 @@ impl MessageHandler for Handler {
             Vacant(entry) => {
                 entry.insert(client.id());
                 let old_nick = mem::replace(&mut client.info_mut().nick, nick.to_string());
-                if old_nick == "*" && client.info().registered {
+                if old_nick == "*" && client.info().status == Status::RegistrationPending {
+                    {
+                        client.info_mut().status = Status::Registered
+                    }
                     unsafe {&*(server as *mut Server)}.register(&client)
                 }
             }
