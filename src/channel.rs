@@ -7,8 +7,9 @@ struct Member {
 }
 
 /// Possible events that can be sent to a channel
-enum Event {
-    Dispatch(Message)
+pub enum Event {
+    Handle(Box<FnOnce(&Channel)>),
+    HandleMut(Box<FnOnce(&mut Channel)>)
 }
 
 /// An IRC channel.

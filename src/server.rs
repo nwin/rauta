@@ -109,7 +109,7 @@ impl Server {
     /// Sends a welcome message to a newly registered client
     fn send_welcome_msg(&self, client: &Client) {
         let info = client.info();
-        client.send_response(ResponseCode::RPL_WELCOME, &[&*format!(
+        self.send_response(client, ResponseCode::RPL_WELCOME, &[&*format!(
             "Welcome to the Internet Relay Network {nick}!{user}@{host}", 
             nick=info.nick,
             user=info.user,

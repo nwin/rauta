@@ -6,6 +6,7 @@
 #![feature(old_io)]
 #![feature(alloc)]
 #![feature(std_misc)]
+#![feature(box_syntax)]
 #![allow(dead_code)]
 #![allow(unused_imports)]
 #![allow(unused_features)]

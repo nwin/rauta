@@ -84,9 +84,8 @@ impl Client {
             // as it is now it is probably very slow
             // TODO handle failures properly, send QUIT
             for line in BufferedReader::new(receiving_stream).lines() {
-                match Message::new(line.unwrap()
-                .trim_right().as_bytes().to_vec()) {
-                    Ok(msg) => {
+                match line.map(|l| Message::new(l.trim_right().as_bytes().to_vec())) {
+                    Ok(Ok(msg)) => {
                         debug!("received message {}", String::from_utf8_lossy(&*msg));
                         if client.info().status != Status::Registered {
                             use protocol::Command::{CAP, NICK, USER};
@@ -103,7 +102,7 @@ impl Client {
                         // TODO: handle error here
                         let _ = server_tx.send(server::Event::InboundMessage(id, msg));
                     },
-                    Err(_) => {}
+                    _ => {}
                 }
             }
         });
