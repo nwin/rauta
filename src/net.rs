@@ -1,9 +1,8 @@
 extern crate libc;
 
 use std::old_io::net::ip::{SocketAddr, Ipv4Addr, Ipv6Addr};
-use self::libc::{size_t, malloc, sockaddr, sockaddr_in, sockaddr_in6, in_addr, in6_addr, c_int, c_char, socklen_t, AF_INET, AF_INET6};
+use self::libc::{sockaddr, sockaddr_in, sockaddr_in6, in_addr, in6_addr, c_int, c_char, socklen_t, AF_INET, AF_INET6};
 use std::mem::{size_of, transmute};
-use std::string;
 use std::ffi;
 
 /*

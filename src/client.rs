@@ -1,7 +1,6 @@
 //! Module containing everything related to high-level client communication
 use std::ops;
-use std::rc::Rc;
-use std::sync::{Arc, RwLock, RwLockReadGuard};
+use std::sync::{Arc, RwLock, RwLockReadGuard, RwLockWriteGuard};
 use std::sync::mpsc::{Sender, channel};
 use std::old_io;
 use std::old_io::{BufferedReader};
@@ -131,13 +130,30 @@ impl Client {
         }
         self.send_raw(msg);
     }
+
+    /// Sends an event to the client
+    pub fn send(&self, evt: Event) {
+        let _ = self.channel.send(evt);
+    }
+
+    /// Sends a raw message to the client
+    pub fn send_raw(&self, msg: Vec<u8>) {
+        self.send(Event::RawMessage(msg));
+    }
     
+    /// Getter for info
     #[inline(always)]
-    fn info(&self) -> RwLockReadGuard<User> {
+    pub fn info(&self) -> RwLockReadGuard<User> {
         (match (*self.info).read() {
             Ok(guard) => guard,
             Err(err) => err.into_inner()
         })
+    }
+    
+    /// Mut getter for info
+    #[inline(always)]
+    pub fn info_mut(&self) -> RwLockWriteGuard<User> {
+        self.info.write().unwrap()
     }
 
     /// Getter for id
@@ -148,16 +164,6 @@ impl Client {
     /// Getter for user name
     pub fn name(&self) -> FragmentReadGuard<User, str> {
         FragmentReadGuard::new(self.info(), |g| &*g.name)
-    }
-
-    /// Sends an event to the client
-    pub fn send(&self, evt: Event) {
-        let _ = self.channel.send(evt);
-    }
-
-    /// Sends a raw message to the client
-    pub fn send_raw(&self, msg: Vec<u8>) {
-        self.send(Event::RawMessage(msg));
     }
 }
 

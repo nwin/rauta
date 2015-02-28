@@ -1,6 +1,3 @@
-use std::sync::{Arc, Weak, RwLock};
-use std::sync::mpsc::{Sender};
-
 use protocol::Message;
 use client::Client;
 

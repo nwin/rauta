@@ -48,7 +48,7 @@ commands!{
     //PART        #[doc = "`PART` command"];
     //QUIT        #[doc = "`QUIT` command"];
     //PONG        #[doc = "`PONG` command"];
-    //NICK        #[doc = "`NICK` command"];
-    //USER        #[doc = "`USER` command"];
-    CAP         #[doc = "`CAP` command"];
+    NICK        #[doc = "NICK <nickname> [ <hopcount> ]"];
+    USER        #[doc = "USER <username> <hostname> <servername> <realname>"];
+    CAP         #[doc = "CAP <subcommand> [ <param> ]"];
 }

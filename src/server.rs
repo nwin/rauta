@@ -1,8 +1,7 @@
 use std::old_io as io;
 use std::old_io::net;
 use std::old_io::{Acceptor, Listener, IoResult};
-use std::ops::Deref;
-use std::old_io::net::tcp::{TcpListener, TcpStream};
+use std::old_io::net::tcp::{TcpListener};
 use std::sync::Arc;
 use std::sync::mpsc::{Sender, Receiver, channel};
 use std::thread::spawn;
@@ -17,6 +16,7 @@ pub struct Server {
     ip: String,
     port: u16,
     clients: HashMap<ClientId, Client>,
+    nicks: HashMap<String, ClientId>,
 }
 
 pub enum Event {
@@ -45,7 +45,8 @@ impl Server {
             host: host.to_string(),
             ip: format!("{}", ip),
             port: 6667,
-            clients: HashMap::new()
+            clients: HashMap::new(),
+            nicks: HashMap::new()
         })
     }
     
@@ -56,10 +57,8 @@ impl Server {
         for event in try!(self.listen()).1.iter() {
             match event {
                 InboundMessage(id, msg) => {
-                    if let Some(client) = self.clients.get(&id) {
-                        if let Err((code, msg)) = handler::invoke(msg, &self, client) {
-                            self.send_response(client, code, &[&*msg])
-                        }
+                    if let Some(client) = self.clients.get(&id).map(|c| c.clone()) {
+                        handler::invoke(msg, &mut self, client)
                     }
                     
                 }
@@ -101,6 +100,16 @@ impl Server {
     /// Sends a response to the client
     pub fn send_msg(&self, client: &Client, cmd: Command, payload: &[&[u8]]) {
         client.send_msg(cmd, payload);
+    }
+
+    /// Getter for nicks
+    pub fn nicks(&self) ->  &HashMap<String, ClientId> {
+        &self.nicks
+    }
+
+    /// Getter for nicks
+    pub fn nicks_mut(&mut self) ->  &mut HashMap<String, ClientId> {
+        &mut self.nicks
     }
 }
 

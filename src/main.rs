@@ -28,5 +28,5 @@ mod test;
 fn main() {
     env_logger::init().unwrap();
 
-    server::Server::new("localhost").map(|s| s.serve_forever()).unwrap();
+    let _ = server::Server::new("localhost").map(|s| s.serve_forever()).unwrap();
 }
