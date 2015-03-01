@@ -161,7 +161,7 @@ impl Member {
     }
     
     /// Getter for the client proxy
-    pub fn proxy(&self) -> &Client {
+    pub fn client(&self) -> &Client {
         &self.client
     }
 }

@@ -1,160 +1,210 @@
-use cmd;
-use channel;
-use channel::util::{InviteOnly, ChannelCreator, OperatorPrivilege, TopicProtect, MemberOnly, UserLimit};
-use msg::RawMessage;
-use util;
+use std::str;
+use std::sync::Arc;
+use std::ops::Range;
+use std::collections::hash_map::Entry::{Occupied, Vacant};
 
-use server::{Server};
-use con::Peer;
+use protocol::{ResponseCode, Message};
+use protocol::ResponseCode::*;
+use protocol::Command::JOIN;
+use client::{Client, MessageOrigin};
+use server::Server;
+use user;
+use channel::{Channel, Member, Event};
 
-use std::collections::hash_map::Entry::{Vacant, Occupied};
+use super::{MessageHandler, ErrorMessage};
 
-/// Handles the JOIN command.
-///
-///    Command: JOIN
-/// Parameters: <channel>{,<channel>} [<key>{,<key>}]
-pub struct Join {
-    raw: RawMessage,
-    targets: Vec<String>,
-    passwords: Vec<Option<Vec<u8>>>,
+/// Handler for NICK command.
+/// NICK nickname
+#[derive(Debug)]
+pub struct Handler {
+    msg: Message,
+    targets: Vec<(Option<Range<usize>>, Option<Range<usize>>)>,
 }
 
-impl Join {
-    fn handle_join(channel: &mut channel::Channel, mut member: channel::Member, password: Option<Vec<u8>>) {
-        match channel.password() {
-            &Some(ref chan_pass) => if !match password { 
-                    Some(password) => &password == chan_pass,
-                    None => false } {
-                member.send_response(cmd::ERR_BADCHANNELKEY,
-                    &[channel.name(),
-                    "Cannot join channel (+k)"]
-                );
-                return
-            },
-            &None => {},
-        }
-        if channel.member_with_id(member.id()).is_some() {
-            // Member already in channel
-            return
-        }
-        if member.mask_matches_any(channel.ban_masks()) 
-           && !member.mask_matches_any(channel.except_masks()) {
-            // Member banned
-            channel.send_response(
-                member.proxy(), 
-                cmd::ERR_BANNEDFROMCHAN, 
-                &["Cannot join channel (+b)"]
-            );
-            return
-        }
-        if channel.has_flag(InviteOnly) 
-           && !member.mask_matches_any(channel.invite_masks()) {
-            // Member not invited
-            channel.send_response(
-                member.proxy(), 
-                cmd::ERR_INVITEONLYCHAN, 
-                &["Cannot join channel (+i)"]
-            );
-            return
-        }
-        if channel.has_flag(UserLimit)
-           && channel.limit().map_or(false, |limit| channel.member_count() + 1 >= limit) {
-            // User limit reached
-            channel.send_response(
-                member.proxy(), 
-                cmd::ERR_CHANNELISFULL, 
-                &["Cannot join channel (+l)"]
-            );
-            return
-        }
-        // Give op to first user
-        if channel.member_count() == 0 {
-            member.promote(ChannelCreator);
-            member.promote(OperatorPrivilege);
-        }
-        
-        // Broadcast that a new member joined the channel and add him
-        let msg = RawMessage::new(
-            cmd::JOIN, 
-            &[channel.name()],
-            Some(member.nick())
-        );
-        let id = member.id().clone();
-        let _ = channel.add_member(member);
-        channel.broadcast(msg);
-        
-        // Topic reply
-        let member = channel.member_with_id(id).unwrap();
-        member.send_response(cmd::RPL_NOTOPIC, 
-            &[channel.name(), "No topic set."]
-        );
-        // Send name list as per RFC
-        super::lists::Names::handle_names(channel, member.proxy());
-    }
-}
-
-impl super::MessageHandler for Join {
-    fn from_message(message: RawMessage) -> Result<Box<Join>, Option<RawMessage>> { 
-        let params = message.params();
+impl MessageHandler for Handler {
+    fn from_message(message: Message) -> Result<Handler, (ResponseCode, ErrorMessage)> {
         let mut targets = Vec::new();
-        let mut passwords = Vec::new();
-        if params.len() > 0 {
-            let channels_passwords: Vec<&[u8]> = if params.len() > 1 {
-                params[1].as_slice().split(|c| *c == b',').collect()
-            } else {
-                Vec::new()
-            };
-            for (i, channel_name) in params[0].as_slice().split(|c| *c == b',').enumerate() {
-                match util::verify_channel(channel_name) {
-                    Some(channel) => {
-                        targets.push(channel.to_string());
-                        if channels_passwords.len() > i {
-                            passwords.push(Some(channels_passwords[i].to_vec()));
-                        } else {
-                            passwords.push(None);
-                        }
-                    },
-                    None => return Err(Some(RawMessage::new(cmd::REPLY(cmd::ERR_NOSUCHCHANNEL), &[
-                        "*", String::from_utf8_lossy(channel_name).as_slice(),
-                        "Invalid channel name."
-                    ], None)))
+        {
+            let mut params = message.params();
+            if let Some(channels) = params.next() {
+                let mut start = 0;
+                for channel_name in channels.split(|c| *c == b',') {
+                    let len = channel_name.len();
+                    // TODO validate channel
+                    targets.push((Some(start..start+len), None));
+                    start += len + 1
                 }
+                if let Some(passwords) = params.next() {
+                    let mut start = 0;
+                    for (channel, password) in targets.iter_mut().zip(passwords.split(|c| *c == b',')) {
+                        let len = password.len();
+                        channel.1 = Some(start..start+len);
+                        start += len + 1
+                    }
+                }
+            } else {
+                return Err((ERR_NEEDMOREPARAMS, ErrorMessage::Plain("No channel name given")))
             }
-        } else {
-             return Err(Some(RawMessage::new(cmd::REPLY(cmd::ERR_NEEDMOREPARAMS), &[
-                "*", message.command().to_string().as_slice(),
-                "no params given"
-            ], None)))
         }
-        Ok(box Join {
-            raw: message.clone(), targets: targets, passwords: passwords
+        Ok(Handler {
+            msg: message,
+            targets: targets
         })
     }
-    
-    fn invoke(&self, server: &mut Server, origin: Peer) {
-        let host = server.host().to_string(); // clone due to #6393
-        for (channel, password) in self.targets.iter()
-                                   .zip(self.passwords.iter()) {
-            let member = channel::Member::new(origin.clone());
-            let tx = server.tx().unwrap(); // save to unwrap, this should exist by now
-            let password = password.clone();
-            match server.channels.entry(channel.to_string()) {
+    fn invoke(self, server: &mut Server, client: Client) {
+        use channel::ChannelMode::*;
+        let tx = server.tx().clone();
+        for (channel, password) in self.targets() {
+            let member = Member::new(client.clone());
+            let password = password.map(|v| v.to_vec());
+            match server.channels_mut().entry(channel.to_string()) {
                 Occupied(entry) => entry.into_mut(),
                 Vacant(entry) => {
-                    let mut channel = channel::Channel::new(channel.to_string(), host.clone());
+                    let mut channel = Channel::new(channel.to_string());
                     channel.add_flag(TopicProtect);
                     channel.add_flag(MemberOnly);
-                    entry.set(channel.listen(tx.clone()))
+                    entry.insert(channel.listen(tx.clone()))
                 }
             }.send(
-                channel::HandleMut(move |channel| {
-                    Join::handle_join(channel, member, password)
+                Event::HandleMut(box move |channel| {
+                    handle_join(channel, member, password)
                 })
             )
         }
     }
+}
+
+struct Targets<'a> {
+    h: &'a Handler,
+    i: usize
+}
+
+impl<'a> Iterator for Targets<'a> {
+    type Item = (&'a str, Option<&'a [u8]>);
+
+    fn next(&mut self) -> Option<(&'a str, Option<&'a [u8]>)> {
+        use std::mem;
+        let mut p = self.h.msg.params();
+        let names = p.next();
+        let passwords = p.next();
+        while self.i < self.h.targets.len() {
+            let entry = &self.h.targets[self.i];
+            self.i += 1;
+            match entry {
+                &(Some(ref r1), Some(ref r2)) => {
+                    return Some((
+                        unsafe{mem::transmute(&names.unwrap()[*r1])},
+                        Some(&passwords.unwrap()[*r2])
+                    ))
+                }
+                &(Some(ref r1), None) => {
+                    return Some((
+                        unsafe{mem::transmute(&names.unwrap()[*r1])},
+                        None
+                    ))
+                }
+                _ => ()
+            }
+        }
+        None
+    }
+}
+
+impl Handler {
+    fn targets(&self) -> Targets {
+        Targets {
+            h: self,
+            i: 0
+        }
+    }
+}
+
+fn handle_join(channel: &mut Channel, mut member: Member, password: Option<Vec<u8>>) {
+    use channel::ChannelMode::*;
+    match channel.password() {
+        &Some(ref chan_pass) => if !match password { 
+                Some(password) => &password == chan_pass,
+                None => false } {
+            member.send_response(ERR_BADCHANNELKEY,
+                &[channel.name(),
+                "Cannot join channel (+k)"]
+            );
+            return
+        },
+        &None => {},
+    }
+    if channel.member_with_id(member.id()).is_some() {
+        // Member already in channel
+        return
+    }
+    if member.mask_matches_any(channel.ban_masks()) 
+       && !member.mask_matches_any(channel.except_masks()) {
+        // Member banned
+        channel.send_response(
+            member.client(), 
+            ERR_BANNEDFROMCHAN, 
+            &["Cannot join channel (+b)"]
+        );
+        return
+    }
+    if channel.has_flag(InviteOnly) 
+       && !member.mask_matches_any(channel.invite_masks()) {
+        // Member not invited
+        channel.send_response(
+            member.client(), 
+            ERR_INVITEONLYCHAN, 
+            &["Cannot join channel (+i)"]
+        );
+        return
+    }
+    if channel.has_flag(UserLimit)
+       && channel.limit().map_or(false, |limit| channel.member_count() + 1 >= limit) {
+        // User limit reached
+        channel.send_response(
+            member.client(), 
+            ERR_CHANNELISFULL, 
+            &["Cannot join channel (+l)"]
+        );
+        return
+    }
+    // Give op to first user
+    if channel.member_count() == 0 {
+        member.promote(ChannelCreator);
+        member.promote(OperatorPrivilege);
+    }
     
-    fn raw_message(&self) -> &RawMessage {
-        &self.raw
+    // Broadcast that a new member joined the channel and add him
+    let msg = Arc::new(member.client().build_msg(JOIN, &[channel.name().as_bytes()], MessageOrigin::User));
+    let id = member.id().clone();
+    let _ = channel.add_member(member);
+    channel.broadcast_raw(msg);
+    
+    // Topic reply
+    let member = channel.member_with_id(id).unwrap();
+    member.send_response(RPL_NOTOPIC, 
+        &[channel.name(), "No topic set."]
+    );
+    // TODO Send name list as per RFC
+    //super::lists::Names::handle_names(channel, member.client());
+}
+
+#[cfg(test)]
+mod tests {
+    use super::super::MessageHandler;
+    use super::Handler;
+    use protocol::Message;
+    /// Tests the mode parser
+        
+    #[test]
+    fn parse_targets() {
+        let msg = Message::new(b"JOIN #hello,#world pass".to_vec()).unwrap();
+        let handler = Handler::from_message(msg).ok().unwrap();
+        let mut targets = handler.targets();
+        let (name, pw) = targets.next().unwrap();
+        assert_eq!(name, "#hello");
+        assert_eq!(pw, Some(b"pass"));
+        let (name, pw) = targets.next().unwrap();
+        assert_eq!(name, "#world");
+        assert_eq!(pw, None);
     }
 }

@@ -40,7 +40,7 @@ commands!{
     //PRIVMSG     #[doc = "`PRIVMSG` command"];
     //NOTICE      #[doc = "`NOTICE` command"];
     //MODE        #[doc = "`MODE` command"];
-    //JOIN        #[doc = "`JOIN` command, see http://tools.ietf.org/html/rfc1459.html#section-4.2.1"];
+    JOIN        #[doc = "`JOIN ( <channel> *( \",\" <channel> ) [ <key> *( \",\" <key> ) ] )/ \"0\""];
     //PING        #[doc = "`PING` command"];
     //WHO         #[doc = "`WHO` command"];
     //NAMES       #[doc = "`NAMES` command"];

@@ -47,12 +47,11 @@ impl Proxy {
     }
 }
 
-
 /// Enumeration of events a channel can receive
 // TODO replace with FnOnce and remove 'static
 pub enum Event {
-    Handle(Box<Invoke<&'static Channel>+Send>),
-    HandleMut(Box<Invoke<&'static mut Channel>+Send>),
+    Handle(Box<FnOnce(&Channel) + Send>),
+    HandleMut(Box<FnOnce(&mut Channel) + Send>),
 }
 
 /// An IRC channel.
@@ -61,7 +60,6 @@ pub enum Event {
 /// This includes authentification, per channel bans etc.
 pub struct Channel {
     name: String,
-    server_name: String,
     topic: Vec<u8>,
     password: Option<Vec<u8>>,
     flags: Flags,
@@ -73,11 +71,15 @@ pub struct Channel {
     invite_masks: HashSet<HostMask>,
 }
 
+fn to_invoke<F>(func: F) -> F
+where F : FnOnce(&Channel) + Send {
+    func
+}
+
 impl Channel {
-    pub fn new(name: String, server_name: String) -> Channel {
+    pub fn new(name: String) -> Channel {
         Channel {
             name: name,
-            server_name: server_name,
             topic: b"".to_vec(),
             password: None,
             flags: HashSet::new(),
@@ -107,8 +109,14 @@ impl Channel {
     fn dispatch(&mut self, event: Event) {
         use std::mem; // workaround until FnOnce is object safe
         match event {
-            Handle(handler) => handler.invoke(unsafe {mem::transmute(self)}),
-            HandleMut(handler) => handler.invoke(unsafe {mem::transmute(self)}),
+            Handle(handler) => {
+                let handler: Box<Invoke<&Channel>> = unsafe{mem::transmute(handler)};
+                handler.invoke(self)
+            },
+            HandleMut(handler) => {
+                let handler: Box<Invoke<&mut Channel>> = unsafe{mem::transmute(handler)};
+                handler.invoke(self)
+            },
             //Message(command, client_id, message) => {
             //    match command {
             //        PRIVMSG => self.handle_privmsg(client_id, message),
@@ -120,11 +128,6 @@ impl Channel {
     /// Getter for channel name
     pub fn name(&self) -> &str {
         self.name.as_slice()
-    }
-    
-    /// Getter for server name
-    pub fn server_name(&self) -> &str {
-        self.server_name.as_slice()
     }
     
     /// Getter for topic
@@ -299,7 +302,6 @@ impl Channel {
             list_code: list_code,
             end_code: end_code,
             name: self.name(),
-            server_name: self.server_name()
         }
     }
 }
@@ -310,7 +312,6 @@ pub struct ListSender<'a> {
     list_code: ResponseCode,
     end_code: ResponseCode,
     name: &'a str,
-    server_name: &'a str
 }
 impl<'a> ListSender<'a> {
     /// Sends a list item to the sender

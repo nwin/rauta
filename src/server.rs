@@ -19,6 +19,7 @@ pub struct Server {
     clients: HashMap<ClientId, Client>,
     nicks: HashMap<String, ClientId>,
     channels: HashMap<String, channel::Proxy>,
+    tx: Option<Sender<Event>>,
 }
 
 pub enum Event {
@@ -50,6 +51,7 @@ impl Server {
             clients: HashMap::new(),
             nicks: HashMap::new(),
             channels: HashMap::new(),
+            tx: None
         })
     }
     
@@ -57,7 +59,9 @@ impl Server {
     pub fn serve_forever(mut self) -> IoResult<Server> {
         use self::Event::{Connected, InboundMessage};
         // todo change this to a more general event dispatching loop
-        for event in try!(self.listen()).1.iter() {
+        let (tx, rx) = try!(self.listen());
+        self.tx = Some(tx);
+        for event in rx.iter() {
             match event {
                 InboundMessage(id, msg) => {
                     if let Some(client) = self.clients.get(&id).map(|c| c.clone()) {
@@ -125,6 +129,11 @@ impl Server {
         &self.channels
     }
 
+    /// Getter for mut channels
+    pub fn channels_mut(&mut self) ->  &mut HashMap<String, channel::Proxy> {
+        &mut self.channels
+    }
+
     /// Getter for nicks
     pub fn nicks(&self) ->  &HashMap<String, ClientId> {
         &self.nicks
@@ -133,6 +142,12 @@ impl Server {
     /// Getter for nicks
     pub fn nicks_mut(&mut self) ->  &mut HashMap<String, ClientId> {
         &mut self.nicks
+    }
+
+    /// Getter for tx for sending to main event loop
+    /// Panics if the main loop is not started
+    pub fn tx(&mut self) ->  &Sender<Event> {
+        self.tx.as_ref().unwrap()
     }
 }
 
@@ -145,5 +160,6 @@ pub fn get_test_server() -> Server {
         clients: HashMap::new(),
         nicks: HashMap::new(),
         channels: HashMap::new(),
+        tx: None,
     }
 }

@@ -33,7 +33,7 @@ impl MessageHandler for Handler {
             let id = client.id();
             proxy.send(channel::Event::HandleMut(box move |channel: &mut channel::Channel | {
                 if let Some(_) = channel.member_with_id(id) {
-                    // TODO use msg.into_vec after changing to FnOnce
+                    println!("{:?}", msg);
                     channel.broadcast_raw(msg);
                     channel.remove_member(&id);
                 }
