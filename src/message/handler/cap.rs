@@ -135,13 +135,16 @@ impl MessageHandler for Handler {
                     },
                     Negotiating(&Registered) => {
                         {
-                            client.info_mut().set_status(NameRegistered)
+                            client.info_mut().set_status(Registered)
                         }
                         server.register(&client)
                     },
                     Negotiating(&Disconnected) => unreachable!(),
                     _ => {}
                 }
+            }
+            CLEAR => {
+                server.send_msg(&client, CAP, &[client.nick().as_bytes(), ACK.as_bytes()])
             }
             _ => {} // ignore other commands
         }

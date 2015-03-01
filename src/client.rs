@@ -94,7 +94,7 @@ impl Client {
                         let cmd = Command::from_message(&msg);
                         if client.info().status() != Status::Registered {
                             match cmd {
-                                Some(CAP) | Some(NICK) | Some(USER) => (),
+                                Some(CAP) | Some(NICK) | Some(USER) | Some(QUIT) => (),
                                 Some(cmd) => {
                                     // User is not registered, ignore other messages for now
                                     debug!("User not yet registered ignored {} message.", cmd);
