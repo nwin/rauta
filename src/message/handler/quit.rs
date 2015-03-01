@@ -27,6 +27,7 @@ impl MessageHandler for Handler {
             Some(reason) => client.build_msg(Command::QUIT, &[reason], MessageOrigin::User),
             None => client.build_msg(Command::QUIT, &[(&*client.nick()).as_bytes()], MessageOrigin::User)
         });
+        // TODO make this faster
         for (_, proxy) in server.channels().iter() {
             let msg = msg.clone();
             let id = client.id();
