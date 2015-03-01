@@ -75,7 +75,7 @@ impl MessageHandler for Handler {
                     entry.insert(channel.listen(tx.clone()))
                 }
             }.send(
-                Event::HandleMut(box move |channel| {
+                Event::HandleMut(box move |channel: &mut Channel| {
                     handle_join(channel, member, password)
                 })
             )

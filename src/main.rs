@@ -11,6 +11,7 @@
 #![feature(unboxed_closures)]
 #![feature(unsafe_destructor)]
 #![allow(dead_code)]
+#![allow(unused_imports)]
 #![allow(unused_features)]
 
 #[macro_use]

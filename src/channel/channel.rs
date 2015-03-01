@@ -47,12 +47,21 @@ impl Proxy {
     }
 }
 
+
+/// Enumeration of events a channel can receive
+// TODO replace with FnOnce and remove 'static
+pub enum Event {
+    Handle(Box<for<'r> Invoke<(&'r Channel)> + Send>),
+    HandleMut(Box<for<'r> Invoke<(&'r mut Channel)> + Send>),
+}
+/*
 /// Enumeration of events a channel can receive
 // TODO replace with FnOnce and remove 'static
 pub enum Event {
     Handle(Box<FnOnce(&Channel) + Send>),
     HandleMut(Box<FnOnce(&mut Channel) + Send>),
 }
+*/
 
 /// An IRC channel.
 ///
@@ -109,14 +118,8 @@ impl Channel {
     fn dispatch(&mut self, event: Event) {
         use std::mem; // workaround until FnOnce is object safe
         match event {
-            Handle(handler) => {
-                let handler: Box<Invoke<&Channel>> = unsafe{mem::transmute(handler)};
-                handler.invoke(self)
-            },
-            HandleMut(handler) => {
-                let handler: Box<Invoke<&mut Channel>> = unsafe{mem::transmute(handler)};
-                handler.invoke(self)
-            },
+            Handle(handler) => handler.invoke(self),
+            HandleMut(handler) => handler.invoke(self),
             //Message(command, client_id, message) => {
             //    match command {
             //        PRIVMSG => self.handle_privmsg(client_id, message),
