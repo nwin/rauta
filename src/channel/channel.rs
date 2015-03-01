@@ -9,7 +9,7 @@ use std::thunk::Invoke;
 
 
 use server;
-use protocol::{ResponseCode};
+use protocol::ResponseCode;
 use user::HostMask;
 use client::{ClientId, Client};
 use client;
@@ -49,14 +49,13 @@ impl Proxy {
 
 
 /// Enumeration of events a channel can receive
-// TODO replace with FnOnce and remove 'static
+// TODO replace with FnOnce
 pub enum Event {
     Handle(Box<for<'r> Invoke<(&'r Channel)> + Send>),
     HandleMut(Box<for<'r> Invoke<(&'r mut Channel)> + Send>),
 }
 /*
 /// Enumeration of events a channel can receive
-// TODO replace with FnOnce and remove 'static
 pub enum Event {
     Handle(Box<FnOnce(&Channel) + Send>),
     HandleMut(Box<FnOnce(&mut Channel) + Send>),
@@ -298,13 +297,31 @@ impl Channel {
         }
     }
 
+    /// Sends the list of users to the client
+    pub fn send_names(&self, client: &Client) {
+        // TODO check if channel is visible to user…
+        // TODO replace with generic list sending function
+        let sender = self.prefixed_list_sender(
+            client, ResponseCode::RPL_NAMREPLY, ResponseCode::RPL_ENDOFNAMES, Some("=")
+        );
+        for member in self.members() {
+            sender.feed_line(member.decorated_nick())
+        }
+    }
+
     pub fn list_sender<'a>(&'a self, receiver: &'a Client, list_code: ResponseCode,
     end_code: ResponseCode) -> ListSender {
+        self.prefixed_list_sender(receiver, list_code, end_code, None)
+    }
+
+    pub fn prefixed_list_sender<'a>(&'a self, receiver: &'a Client, list_code: ResponseCode,
+    end_code: ResponseCode, prefix: Option<&'a str>) -> ListSender {
         ListSender {
             receiver: receiver,
             list_code: list_code,
             end_code: end_code,
             name: self.name(),
+            prefix: prefix,
         }
     }
 }
@@ -315,16 +332,23 @@ pub struct ListSender<'a> {
     list_code: ResponseCode,
     end_code: ResponseCode,
     name: &'a str,
+    prefix: Option<&'a str>
 }
 impl<'a> ListSender<'a> {
     /// Sends a list item to the sender
     ///
     /// The sender prepends the list item with the channel name.
-    pub fn feed_line(&self, line: &[&str]) {
-        self.receiver.send_response(
-            self.list_code, 
-            (vec![self.name] + line.as_slice()).as_slice()
-        )
+    pub fn feed_line(&self, line: &str) {
+        match self.prefix {
+            Some(prefix) => self.receiver.send_response(
+                self.list_code, 
+                &[prefix, self.name, line]
+            ),
+            None => self.receiver.send_response(
+                self.list_code, 
+                &[self.name, line]
+            )
+        }
     }
     /// Tells the sender that there are no more items in the list
     ///
@@ -336,6 +360,6 @@ impl<'a> ListSender<'a> {
 #[unsafe_destructor]
 impl<'a> Drop for ListSender<'a> {
     fn drop(&mut self) {
-        self.receiver.send_response(self.end_code, &[self.name])
+        self.receiver.send_response(self.end_code, &[self.name, "End of list"])
     }
 }

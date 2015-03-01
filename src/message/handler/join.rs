@@ -17,12 +17,12 @@ use super::{MessageHandler, ErrorMessage};
 #[derive(Debug)]
 pub struct Handler {
     msg: Message,
-    targets: Vec<(Option<Range<usize>>, Option<Range<usize>>)>,
+    destinations: Vec<(Option<Range<usize>>, Option<Range<usize>>)>,
 }
 
 impl MessageHandler for Handler {
     fn from_message(message: Message) -> Result<Handler, (ResponseCode, ErrorMessage)> {
-        let mut targets = Vec::new();
+        let mut destinations = Vec::new();
         {
             let mut params = message.params();
             if let Some(channels) = params.next() {
@@ -31,7 +31,7 @@ impl MessageHandler for Handler {
                     let len = channel_name.len();
                     match misc::verify_channel(channel_name) {
                         Some(_) => {
-                            targets.push((Some(start..start+len), None));
+                            destinations.push((Some(start..start+len), None));
                         },
                         None => return Err((
                             ERR_NEEDMOREPARAMS,
@@ -45,25 +45,25 @@ impl MessageHandler for Handler {
                 }
                 if let Some(passwords) = params.next() {
                     let mut start = 0;
-                    for (channel, password) in targets.iter_mut().zip(passwords.split(|c| *c == b',')) {
+                    for (channel, password) in destinations.iter_mut().zip(passwords.split(|c| *c == b',')) {
                         let len = password.len();
                         channel.1 = Some(start..start+len);
                         start += len + 1
                     }
                 }
             } else {
-                return Err((ERR_NEEDMOREPARAMS, ErrorMessage::Plain("No channel name given")))
+                return Err((ERR_NEEDMOREPARAMS, ErrorMessage::WithSubject(format!("{}", JOIN), "No channel name given")))
             }
         }
         Ok(Handler {
             msg: message,
-            targets: targets
+            destinations: destinations
         })
     }
     fn invoke(self, server: &mut Server, client: Client) {
         use channel::ChannelMode::*;
         let tx = server.tx().clone();
-        for (channel, password) in self.targets() {
+        for (channel, password) in self.destinations() {
             let member = Member::new(client.clone());
             let password = password.map(|v| v.to_vec());
             match server.channels_mut().entry(channel.to_string()) {
@@ -83,12 +83,12 @@ impl MessageHandler for Handler {
     }
 }
 
-struct Targets<'a> {
+struct Destinations<'a> {
     h: &'a Handler,
     i: usize
 }
 
-impl<'a> Iterator for Targets<'a> {
+impl<'a> Iterator for Destinations<'a> {
     type Item = (&'a str, Option<&'a [u8]>);
 
     fn next(&mut self) -> Option<(&'a str, Option<&'a [u8]>)> {
@@ -96,8 +96,8 @@ impl<'a> Iterator for Targets<'a> {
         let mut p = self.h.msg.params();
         let names = p.next();
         let passwords = p.next();
-        while self.i < self.h.targets.len() {
-            let entry = &self.h.targets[self.i];
+        while self.i < self.h.destinations.len() {
+            let entry = &self.h.destinations[self.i];
             self.i += 1;
             match entry {
                 &(Some(ref r1), Some(ref r2)) => {
@@ -120,8 +120,8 @@ impl<'a> Iterator for Targets<'a> {
 }
 
 impl Handler {
-    fn targets(&self) -> Targets {
-        Targets {
+    fn destinations(&self) -> Destinations {
+        Destinations {
             h: self,
             i: 0
         }
@@ -193,8 +193,7 @@ fn handle_join(channel: &mut Channel, mut member: Member, password: Option<Vec<u
     member.send_response(RPL_NOTOPIC, 
         &[channel.name(), "No topic set."]
     );
-    // TODO Send name list as per RFC
-    //super::lists::Names::handle_names(channel, member.client());
+    channel.send_names(member.client())
 }
 
 #[cfg(test)]
@@ -205,14 +204,14 @@ mod tests {
     /// Tests the mode parser
         
     #[test]
-    fn parse_targets() {
+    fn parse_destinations() {
         let msg = Message::new(b"JOIN #hello,#world pass".to_vec()).unwrap();
         let handler = Handler::from_message(msg).ok().unwrap();
-        let mut targets = handler.targets();
-        let (name, pw) = targets.next().unwrap();
+        let mut destinations = handler.destinations();
+        let (name, pw) = destinations.next().unwrap();
         assert_eq!(name, "#hello");
         assert_eq!(pw, Some(b"pass"));
-        let (name, pw) = targets.next().unwrap();
+        let (name, pw) = destinations.next().unwrap();
         assert_eq!(name, "#world");
         assert_eq!(pw, None);
     }

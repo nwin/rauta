@@ -4,8 +4,27 @@
 pub enum ResponseCode {
     /// `Welcome to the Internet Relay Network <nick>!<user>@<host>`
     RPL_WELCOME = 001,
+    /// `<channel> <mode> <mode params>`
+    RPL_CHANNELMODEIS = 324,
     /// `<channel> :No topic is set`
     RPL_NOTOPIC = 331,
+    /// `<channel> <invitemask>`
+    RPL_INVITELIST = 346,
+    /// `<channel> :End of channel invite list`
+    RPL_ENDOFINVITELIST = 347,
+    /// `<channel> <exceptionmask>`
+    RPL_EXCEPTLIST = 348,
+    /// `<channel> :End of channel exception list `
+    RPL_ENDOFEXCEPTLIST = 349,
+    /// `<channel> <banmask>`
+    RPL_BANLIST = 367,
+    /// `"( "=" / "*" / "@" ) <channel> :[ "@" / "+" ] <nick> *( " " [ "@" / "+" ] <nick> )`
+    /// "@" is used for secret channels, "*" for private channels, and "=" for others (public channels).
+    RPL_NAMREPLY = 353,
+    /// `<channel> :End of NAMES list`
+    RPL_ENDOFNAMES = 366,
+    /// `<channel> :End of channel ban list`
+    RPL_ENDOFBANLIST = 368,
     /// `<channel name> :No such channel`
     ERR_NOSUCHCHANNEL = 403,
     /// `<subcommand> :<reason>`
@@ -30,4 +49,8 @@ pub enum ResponseCode {
     ERR_BANNEDFROMCHAN = 474,
     /// `<channel> :Cannot join channel (+k)`
     ERR_BADCHANNELKEY = 475,
+    /// `<channel> :You're not channel operator`
+    ERR_CHANOPRIVSNEEDED = 482,
+    /// `:Cannot change mode for other users`
+    ERR_USERSDONTMATCH = 502,
 }

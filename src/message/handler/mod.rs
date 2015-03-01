@@ -8,6 +8,7 @@ mod nick;
 mod user;
 mod quit;
 mod join;
+mod mode;
 
 pub trait MessageHandler {
     fn from_message(message: Message) -> Result<Self, (ResponseCode, ErrorMessage)>;
@@ -51,6 +52,7 @@ pub fn invoke(message: Message, server: &mut Server, client: Client) {
 
 handle!{
     JOIN with self::join::Handler,
+    MODE with self::mode::Handler,
     QUIT with self::quit::Handler,
     CAP with self::cap::Handler,
     NICK with self::nick::Handler,

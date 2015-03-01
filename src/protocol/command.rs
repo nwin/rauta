@@ -39,7 +39,7 @@ impl fmt::Display for Command {
 commands!{
     //PRIVMSG     #[doc = "`PRIVMSG` command"];
     //NOTICE      #[doc = "`NOTICE` command"];
-    //MODE        #[doc = "`MODE` command"];
+    MODE        #[doc = "`MODE` command"];
     JOIN        #[doc = "`JOIN ( <channel> *( \",\" <channel> ) [ <key> *( \",\" <key> ) ] )/ \"0\""];
     //PING        #[doc = "`PING` command"];
     //WHO         #[doc = "`WHO` command"];
