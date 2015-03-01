@@ -9,14 +9,8 @@ use std::num::FromPrimitive;
 use protocol::{Message, Params};
 use client::Client;
 
-pub use self::channel::{Channel, Proxy};
+pub use self::channel::{Event, Channel, Proxy};
 pub use self::member::{Member};
-
-/// Possible events that can be sent to a channel
-pub enum Event {
-    Handle(Box<FnOnce(&Channel)>),
-    HandleMut(Box<FnOnce(&mut Channel)>)
-}
 
 /// Enumeration of possible channel modes
 /// as of http://tools.ietf.org/html/rfc2811#section-4

@@ -46,7 +46,7 @@ commands!{
     //NAMES       #[doc = "`NAMES` command"];
     //TOPIC       #[doc = "`TOPIC` command"];
     //PART        #[doc = "`PART` command"];
-    //QUIT        #[doc = "`QUIT` command"];
+    QUIT        #[doc = "`QUIT [<reason>]` "];
     //PONG        #[doc = "`PONG` command"];
     NICK        #[doc = "`NICK <nickname> [ <hopcount> ]`"];
     USER        #[doc = "`USER <username> <hostname> <servername> <realname>`"];

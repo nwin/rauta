@@ -10,6 +10,7 @@ use std::collections::HashMap;
 use protocol::{Command, ResponseCode, Message};
 use client::{ClientId, Client};
 use message::handler;
+use channel;
 
 pub struct Server {
     host: String,
@@ -17,6 +18,7 @@ pub struct Server {
     port: u16,
     clients: HashMap<ClientId, Client>,
     nicks: HashMap<String, ClientId>,
+    channels: HashMap<String, channel::Proxy>,
 }
 
 pub enum Event {
@@ -46,7 +48,8 @@ impl Server {
             ip: format!("{}", ip),
             port: 6667,
             clients: HashMap::new(),
-            nicks: HashMap::new()
+            nicks: HashMap::new(),
+            channels: HashMap::new(),
         })
     }
     
@@ -117,6 +120,11 @@ impl Server {
         )])
     }
 
+    /// Getter for channels
+    pub fn channels(&self) ->  &HashMap<String, channel::Proxy> {
+        &self.channels
+    }
+
     /// Getter for nicks
     pub fn nicks(&self) ->  &HashMap<String, ClientId> {
         &self.nicks
@@ -135,6 +143,7 @@ pub fn get_test_server() -> Server {
         ip: "127.0.0.1".to_string(),
         port: 0,
         clients: HashMap::new(),
-        nicks: HashMap::new()
+        nicks: HashMap::new(),
+        channels: HashMap::new(),
     }
 }
