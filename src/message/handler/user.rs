@@ -8,7 +8,7 @@ use protocol::Command::USER;
 use client::Client;
 use server::Server;
 use super::{MessageHandler, ErrorMessage};
-use user::Status;
+use user;
 
 /// Handler for NICK command.
 /// NICK nickname
@@ -42,34 +42,42 @@ impl MessageHandler for Handler {
         }
     }
     fn invoke(self, server: &mut Server, client: Client) {
-        let reg_new = {
-            let ref mut info = client.info_mut();
-            if info.status() != Status::Registered {
-                info.set_user(self.username);
-                info.set_realname(self.realname);
-                let status = if info.nick() == "*" {
-                    Status::RegistrationPending
-                } else {
-                    Status::Registered
-                };
-                info.set_status(status);
-                true
-            } else {
-                false
-            }
+        use user::Status::*;
+        let status = {
+            // Prevent dead-lock
+            client.info().status()
         };
-        let nick_ok = {
-            client.info().nick() != "*"
-        };
-        if nick_ok && reg_new {
-            server.register(&client)
-        } else if !reg_new {
-            server.send_response(
-                &client, 
-                ERR_ALREADYREGISTRED, 
-                &["Unauthorized command (already registered)"]
-            )
+        match status {
+            Registered | NameRegistered |
+            Negotiating(&NameRegistered) | Negotiating(&Registered) => {
+                server.send_response(
+                    &client, 
+                    ERR_ALREADYREGISTRED, 
+                    &["Unauthorized command (already registered)"]
+                )
+            },
+            status => {
+                {
+                    let ref mut info = client.info_mut();
+                    info.set_user(self.username);
+                    info.set_realname(self.realname);
+                }
+                match status {
+                    Negotiating(&NickRegistered) => {
+                        client.info_mut().set_status(user::STATUS_NEG_REG)
+                    }
+                    Negotiating(_) => {
+                        client.info_mut().set_status(user::STATUS_NEG_NAMEREG)
+                    }
+                    NickRegistered => {
+                        {client.info_mut().set_status(Registered)}
+                        server.register(&client)
+                    }
+                    _ => {
+                        client.info_mut().set_status(NameRegistered)
+                    }
+                }
+            },
         }
-        
     }
 }

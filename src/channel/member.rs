@@ -1,7 +1,7 @@
 use std::collections::{HashSet};
 
 use client;
-use client::{ClientId, Client};
+use client::{ClientId, Client, MessageOrigin};
 use user::HostMask;
 use protocol::{Message, Command, ResponseCode};
 use super::{Flags, ChannelMode};
@@ -54,8 +54,8 @@ impl Member {
     }
 
     /// Sends a message to the client
-    pub fn send_msg(&self, cmd: Command, payload: &[&[u8]]) {
-        self.client.send_msg(cmd, payload)
+    pub fn send_msg(&self, cmd: Command, payload: &[&[u8]], origin: MessageOrigin) {
+        self.client.send_msg(cmd, payload, origin)
     }
 
     /// Sends a message to the client

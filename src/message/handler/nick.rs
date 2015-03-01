@@ -5,7 +5,7 @@ use protocol::{ResponseCode, Message};
 use protocol::ResponseCode::*;
 use client::Client;
 use server::Server;
-use user::Status;
+use user;
 
 use super::{MessageHandler, ErrorMessage};
 
@@ -47,6 +47,7 @@ impl MessageHandler for Handler {
     	}
     }
     fn invoke(self, server: &mut Server, client: Client) {
+        use user::Status::*;
         let nick = self.nick();
         // Note RFC issue #690, string has to be cloned twice now…
         // TODO: handle renames delete old entries…
@@ -58,12 +59,25 @@ impl MessageHandler for Handler {
             ),
             Vacant(entry) => {
                 entry.insert(client.id());
-                let old_nick = client.info_mut().set_nick(nick.to_string());
-                if old_nick == "*" && client.info().status() == Status::RegistrationPending {
-                    {
-                        client.info_mut().set_status(Status::Registered)
+                {let _ = client.info_mut().set_nick(nick.to_string());}
+                let status = {
+                    // Prevent dead-lock
+                    client.info().status()
+                };
+                match status {
+                    NameRegistered => {
+                        {client.info_mut().set_status(Registered)}
+                        unsafe {&*(server as *mut Server)}.register(&client)
+                    },
+                    Negotiating(&NameRegistered) => {
+                        client.info_mut().set_status(user::STATUS_NEG_REG)
+                    },
+                    Negotiating(_) => {
+                        client.info_mut().set_status(user::STATUS_NEG_NICKREG)
                     }
-                    unsafe {&*(server as *mut Server)}.register(&client)
+                    _ => {
+                        client.info_mut().set_status(NickRegistered)
+                    }
                 }
             }
         }

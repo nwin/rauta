@@ -5,6 +5,7 @@ use protocol::Command::CAP;
 use client::Client;
 use server::Server;
 use super::{MessageHandler, ErrorMessage};
+use user;
 
 /// Handler for CAP command.
 /// CAP subcommand [params]
@@ -90,17 +91,58 @@ impl MessageHandler for Handler {
     }
     fn invoke(self, server: &mut Server, client: Client) {
         use self::Subcommand::*;
+        use user::Status::*;
         match self.subcmd() {
-            LS => server.send_msg(&client, CAP, &[LS.as_bytes()]),
-            LIST => server.send_msg(&client, CAP, &[LIST.as_bytes()]),
+            LS => server.send_msg(&client, CAP, &[client.nick().as_bytes(), LS.as_bytes()]),
+            LIST => server.send_msg(&client, CAP, &[client.nick().as_bytes(), LIST.as_bytes()]),
             REQ => {
+                let status = {
+                    // Prevent dead-lock
+                    client.info().status()
+                };
+                match status {
+                    Negotiating(_) => {},
+                    NickRegistered => {
+                        client.info_mut().set_status(user::STATUS_NEG_NICKREG)
+                    }
+                    NameRegistered => {
+                        client.info_mut().set_status(user::STATUS_NEG_NAMEREG)
+                    }
+                    _ => {
+                        client.info_mut().set_status(user::STATUS_NEG_CONNECT)
+                    }
+                }
                 if let Some(args) = self.args {
-                    server.send_msg(&client, CAP, &[NAK.as_bytes(), self.msg.params().nth(args).unwrap()])
+                    server.send_msg(&client, CAP, &[client.nick().as_bytes(), NAK.as_bytes(), self.msg.params().nth(args).unwrap()])
                 } else {
-                    server.send_msg(&client, CAP, &[NAK.as_bytes()])
+                    server.send_msg(&client, CAP, &[client.nick().as_bytes(), NAK.as_bytes()])
                 }
             }
-            
+            END => {
+                let status = {
+                    // Prevent dead-lock
+                    client.info().status()
+                };
+                match status {
+                    Negotiating(&NickRegistered) => {
+                        client.info_mut().set_status(NickRegistered)
+                    },
+                    Negotiating(&NameRegistered) => {
+                        client.info_mut().set_status(NameRegistered)
+                    },
+                    Negotiating(&Connected) => {
+                        client.info_mut().set_status(Connected)
+                    },
+                    Negotiating(&Registered) => {
+                        {
+                            client.info_mut().set_status(NameRegistered)
+                        }
+                        server.register(&client)
+                    },
+                    Negotiating(&Disconnected) => unreachable!(),
+                    _ => {}
+                }
+            }
             _ => {} // ignore other commands
         }
     }

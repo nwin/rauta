@@ -125,6 +125,11 @@ impl Message {
             i: 0 - 1
         }
     }
+
+    /// Consumes the message and returns the underlying vec
+    pub fn into_vec(self) -> Vec<u8> {
+        self.message
+    }
 }
 
 impl ops::Deref for Message {

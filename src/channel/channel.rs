@@ -286,12 +286,12 @@ impl Channel {
     
     /// Broadcasts a message to all members
     #[inline]
-    pub fn broadcast_raw(&self, msg: Vec<u8>) {
-        let msg = Arc::new(msg);
+    pub fn broadcast_raw(&self, msg: Arc<Vec<u8>>) {
         for member in self.members() {
             member.send(client::Event::SharedMessage(msg.clone()))
         }
     }
+
     pub fn list_sender<'a>(&'a self, receiver: &'a Client, list_code: ResponseCode,
     end_code: ResponseCode) -> ListSender {
         ListSender {

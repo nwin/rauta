@@ -48,6 +48,12 @@ impl ClientId {
     }
 }
 
+/// Origin of a message
+pub enum MessageOrigin {
+    Server,
+    User
+}
+
 /// Struct for client communication
 #[derive(Clone)]
 pub struct Client {
@@ -76,31 +82,43 @@ impl Client {
         };
         let _ = server_tx.send(server::Event::Connected(client.clone()));
         spawn(move || {
+            use protocol::Command::{CAP, NICK, USER, QUIT};
             // TODO: write a proper 510 char line iterator
             // as it is now it is probably very slow
             // TODO handle failures properly, send QUIT
-            for line in BufferedReader::new(receiving_stream).lines() {
+            let mut line_reader = BufferedReader::new(receiving_stream);
+            for line in line_reader.lines() {
                 match line.map(|l| Message::new(l.trim_right().as_bytes().to_vec())) {
                     Ok(Ok(msg)) => {
                         debug!("received message {}", String::from_utf8_lossy(&*msg));
+                        let cmd = Command::from_message(&msg);
                         if client.info().status() != Status::Registered {
-                            use protocol::Command::{CAP, NICK, USER};
-                            match Command::from_message(&msg) {
+                            match cmd {
                                 Some(CAP) | Some(NICK) | Some(USER) => (),
                                 Some(cmd) => {
                                     // User is not registered, ignore other messages for now
-                                    debug!("user not registered ignored {} message", cmd);
+                                    debug!("User not yet registered ignored {} message.", cmd);
                                     continue
                                 }
                                 _ => ()
                             }
                         }
-                        // TODO: handle error here
-                        let _ = server_tx.send(server::Event::InboundMessage(id, msg));
+                        if let Err(_) = server_tx.send(server::Event::InboundMessage(id, msg)) {
+                            // Server thread crashed, quitting client thread
+                            break
+                        }
+                        if cmd.map_or(false, |c| c == QUIT) {
+                            // Closing connection
+                            break
+                        }
                     },
-                    _ => {}
+                    Ok(Err(_)) => {} // TODO send error reason
+                    Err(_) => {} // TODO close connection and send quit message
                 }
             }
+            let mut stream = line_reader.into_inner();
+            let _ = stream.close_read();
+            let _ = stream.close_write();
         });
         spawn(move || {
             use self::Event::*;
@@ -155,17 +173,19 @@ impl Client {
     }
     
     /// Builds a raw message
-    pub fn build_msg(&self, cmd: Command, payload: &[&[u8]]) -> Vec<u8> {
-        let msg = format!(":{prefix} {cmd}", 
-                          prefix=&*self.hostname,
-                          cmd=cmd,
-        ).into_bytes();
+    pub fn build_msg(&self, cmd: Command, payload: &[&[u8]], origin: MessageOrigin) -> Vec<u8> {
+        use self::MessageOrigin::*;
+
+        let msg = match origin { 
+            Server => format!(":{prefix} {cmd}", prefix=&*self.hostname, cmd=cmd),
+            User => format!(":{prefix} {cmd}", prefix=&*self.nick(), cmd=cmd),
+        }.into_bytes();
         self.push_tail(msg, payload)
     }
     
     /// Sends a message to the client
-    pub fn send_msg(&self, cmd: Command, payload: &[&[u8]]) {
-        self.send_raw(self.build_msg(cmd, payload));
+    pub fn send_msg(&self, cmd: Command, payload: &[&[u8]], origin: MessageOrigin) {
+        self.send_raw(self.build_msg(cmd, payload, origin));
     }
     
     /// Sends a response to the client

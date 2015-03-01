@@ -1,5 +1,5 @@
 #[allow(non_camel_case_types)]
-#[derive(Copy, Debug)]
+#[derive(Copy, Debug, PartialEq)]
 /// Response codes defined by the IRC protocol.
 pub enum ResponseCode {
     /// `Welcome to the Internet Relay Network <nick>!<user>@<host>`

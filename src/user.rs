@@ -4,18 +4,30 @@ use client::ClientId;
 
 #[derive(Debug, PartialEq, Copy)]
 pub enum Status {
+    /// User is not connected
 	Disconnected,
+    /// User did just connect
 	Connected,
-	RegistrationPending,
+    /// User successfully registered a nickname
+	NickRegistered,
+    /// User sent a USER command
+    NameRegistered,
+    /// User initiated capability negotiations
+    Negotiating(&'static Status),
+    /// User is fully registered
 	Registered
 }
+pub const STATUS_NEG_NAMEREG: Status = Status::Negotiating(&Status::NameRegistered);
+pub const STATUS_NEG_NICKREG: Status = Status::Negotiating(&Status::NickRegistered);
+pub const STATUS_NEG_CONNECT: Status = Status::Negotiating(&Status::Connected);
+pub const STATUS_NEG_REG: Status = Status::Negotiating(&Status::Registered);
 
 #[derive(Debug)]
 pub struct User {
     nick: String,
     user: String,
-    host: String,
     realname: String,
+    host: String,
     status: Status,
     hostmask: HostMask
 }

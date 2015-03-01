@@ -8,7 +8,7 @@ use std::thread::spawn;
 use std::collections::HashMap;
 
 use protocol::{Command, ResponseCode, Message};
-use client::{ClientId, Client};
+use client::{ClientId, Client, MessageOrigin};
 use message::handler;
 use channel;
 
@@ -102,7 +102,7 @@ impl Server {
 
     /// Sends a response to the client
     pub fn send_msg(&self, client: &Client, cmd: Command, payload: &[&[u8]]) {
-        client.send_msg(cmd, payload);
+        client.send_msg(cmd, payload, MessageOrigin::Server);
     }
 
     pub fn register(&self, client: &Client) {

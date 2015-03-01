@@ -9,7 +9,7 @@ macro_rules! commands {
         #[$doc:meta];
     )*} => {
 /// Enumeration of all supported IRC commands (mainly RFC1459)
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum Command {
     $(#[$doc] $ident,)*
     /// Numeric reply codes, see `ResponseCode`
