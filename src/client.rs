@@ -9,6 +9,8 @@ use std::old_io::net::tcp::TcpStream;
 use std::old_io::net::ip::IpAddr;
 use std::thread::spawn;
 
+use rand;
+
 use server;
 use user::{User, Status};
 use protocol::Message;
@@ -42,7 +44,7 @@ impl ClientId {
                     IpAddr::Ipv4Addr(a, b, c, d) => (a as u32) <<24 | (b as u32) <<16 | (c as u32) <<8 | d as u32,
                     IpAddr::Ipv6Addr(_, _, _, _, _, _, a, b) => (a as u32)  << 16 | b as u32  
                 } as u64, 
-                42//random()
+                rand::random()
             ]
         }
     }
@@ -229,8 +231,8 @@ impl Client {
         FragmentReadGuard::new(self.info(), |g| g.nick())
     }
 
-    /// Getter for host name
-    pub fn hostname(&self) -> &Arc<String> {
+    /// Getter for server name
+    pub fn server_name(&self) -> &Arc<String> {
         &self.hostname
     }
 }

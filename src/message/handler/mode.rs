@@ -225,7 +225,7 @@ pub fn handle_mode(channel: &mut channel::Channel, client: Client, message: Mess
                             &client, start_code, end_code
                         );
                         for mask in masks.iter() {
-                            sender.feed_line(mask.as_str())
+                            sender.feed_line_single(mask.as_str())
                         }
                         sender.end_of_list()
                     }

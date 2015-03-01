@@ -4,6 +4,8 @@
 pub enum ResponseCode {
     /// `Welcome to the Internet Relay Network <nick>!<user>@<host>`
     RPL_WELCOME = 001,
+    /// `"<name> :End of WHO list"`
+    RPL_ENDOFWHO = 315,
     /// `<channel> <mode> <mode params>`
     RPL_CHANNELMODEIS = 324,
     /// `<channel> :No topic is set`
@@ -18,6 +20,8 @@ pub enum ResponseCode {
     RPL_ENDOFEXCEPTLIST = 349,
     /// `<channel> <banmask>`
     RPL_BANLIST = 367,
+    /// `"<channel> <user> <host> <server> <nick> ( "H" / "G" > ["*"] [ ( "@" / "+" ) ] :<hopcount> <real name>"`
+    RPL_WHOREPLY = 352,
     /// `"( "=" / "*" / "@" ) <channel> :[ "@" / "+" ] <nick> *( " " [ "@" / "+" ] <nick> )`
     /// "@" is used for secret channels, "*" for private channels, and "=" for others (public channels).
     RPL_NAMREPLY = 353,
@@ -54,3 +58,4 @@ pub enum ResponseCode {
     /// `:Cannot change mode for other users`
     ERR_USERSDONTMATCH = 502,
 }
+

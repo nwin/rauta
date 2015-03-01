@@ -7,3 +7,4 @@ authors = ["nwin <nwin@users.noreply.github.com>"]
 [dependencies]
 log = "*"
 env_logger = "*"
+rand = "*"

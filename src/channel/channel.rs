@@ -305,7 +305,7 @@ impl Channel {
             client, ResponseCode::RPL_NAMREPLY, ResponseCode::RPL_ENDOFNAMES, Some("=")
         );
         for member in self.members() {
-            sender.feed_line(member.decorated_nick())
+            sender.feed_line_single(member.decorated_nick())
         }
     }
 
@@ -337,8 +337,8 @@ pub struct ListSender<'a> {
 impl<'a> ListSender<'a> {
     /// Sends a list item to the sender
     ///
-    /// The sender prepends the list item with the channel name.
-    pub fn feed_line(&self, line: &str) {
+    /// The sender prepends the list item with the channel name and prefix.
+    pub fn feed_line_single(&self, line: &str) {
         match self.prefix {
             Some(prefix) => self.receiver.send_response(
                 self.list_code, 
@@ -347,6 +347,22 @@ impl<'a> ListSender<'a> {
             None => self.receiver.send_response(
                 self.list_code, 
                 &[self.name, line]
+            )
+        }
+    }
+    /// Sends a list item to the sender
+    ///
+    /// The item may consist of several parameters
+    /// The sender prepends the list item with the channel name and prefix.
+    pub fn feed_line(&self, line: &[&str]) {
+        match self.prefix {
+            Some(prefix) => self.receiver.send_response(
+                self.list_code, 
+                &*(vec![prefix, self.name] + line)
+            ),
+            None => self.receiver.send_response(
+                self.list_code, 
+                &*(vec![self.name] + line)
             )
         }
     }

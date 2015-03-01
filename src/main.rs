@@ -18,6 +18,7 @@
 extern crate log;
 extern crate env_logger;
 
+extern crate rand;
 
 pub mod net;
 pub mod protocol;

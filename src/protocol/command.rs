@@ -42,7 +42,7 @@ commands!{
     MODE        #[doc = "`MODE` command"];
     JOIN        #[doc = "`JOIN ( <channel> *( \",\" <channel> ) [ <key> *( \",\" <key> ) ] )/ \"0\""];
     //PING        #[doc = "`PING` command"];
-    //WHO         #[doc = "`WHO` command"];
+    WHO         #[doc = "`WHO [ <mask> [ \"o\" ] ]`"];
     //NAMES       #[doc = "`NAMES` command"];
     //TOPIC       #[doc = "`TOPIC` command"];
     //PART        #[doc = "`PART` command"];
