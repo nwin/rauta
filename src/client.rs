@@ -18,7 +18,9 @@ use protocol::{Command, ResponseCode};
 #[derive(Debug)]
 pub enum Event {
     /// Raw message that should be send to the client as it is.
-    RawMessage(Vec<u8>)
+    Message(Vec<u8>),
+    /// Shared raw message that should be send to the client as it is.
+    SharedMessage(Arc<Vec<u8>>)
 }
 
 #[derive(Hash, Copy, PartialEq, Eq, Clone, Debug)]
@@ -101,13 +103,21 @@ impl Client {
             }
         });
         spawn(move || {
+            use self::Event::*;
             // TODO: socket timeout
             // implement when pings are send out
             // TODO handle failures properly, send QUIT
             let mut output_stream = BufferedWriter::new(stream);
             for event in rx.iter() {
                 match event {
-                    Event::RawMessage(msg) => {
+                    Message(msg) => {
+                        debug!(" sending message {}", String::from_utf8_lossy(msg.as_slice()));
+                        output_stream.write_all(&*msg).unwrap();
+                        output_stream.write_all(b"\r\n").unwrap();
+                        output_stream.flush().unwrap();
+                    }
+                    SharedMessage(msg) => {
+                        let msg = &*msg;
                         debug!(" sending message {}", String::from_utf8_lossy(msg.as_slice()));
                         output_stream.write_all(&*msg).unwrap();
                         output_stream.write_all(b"\r\n").unwrap();
@@ -118,19 +128,8 @@ impl Client {
         });
         Ok(())
     }
-    
-    pub fn send_response(&self, code: ResponseCode, payload: &[&str]) {
-        use std::mem;
-        // Unfortunately there is no other way to efficiently convert &[&str] to &[&[u8]]
-        self.send_msg(Command::RESPONSE(code), unsafe { mem::transmute(payload) });
-    }
-    
-    pub fn send_msg(&self, cmd: Command, payload: &[&[u8]]) {
-        let mut msg = format!(":{prefix} {cmd} {user}", 
-                              prefix=&*self.hostname,
-                              cmd=cmd,
-                              user=&*self.nick()
-        ).into_bytes();
+
+    fn push_tail(&self, mut msg: Vec<u8>, payload: &[&[u8]]) -> Vec<u8> {
         if payload.len() > 0 {
             let last = payload.len() - 1;
             for item in payload[..last].iter() {
@@ -140,17 +139,49 @@ impl Client {
             msg.push_all(b" :");
             msg.push_all(payload[last])
         }
-        self.send_raw(msg);
+        msg
+    }
+    
+    /// Builds a raw response message
+    pub fn build_response(&self, code: ResponseCode, payload: &[&str]) -> Vec<u8> {
+        use std::mem;
+        let msg = format!(":{prefix} {cmd} {user}", 
+                          prefix=&*self.hostname,
+                          cmd=Command::RESPONSE(code),
+                          user=&*self.nick()
+        ).into_bytes();
+        // Unfortunately there is no other way to efficiently convert &[&str] to &[&[u8]]
+        self.push_tail(msg, unsafe { mem::transmute(payload) })
+    }
+    
+    /// Builds a raw message
+    pub fn build_msg(&self, cmd: Command, payload: &[&[u8]]) -> Vec<u8> {
+        let msg = format!(":{prefix} {cmd}", 
+                          prefix=&*self.hostname,
+                          cmd=cmd,
+        ).into_bytes();
+        self.push_tail(msg, payload)
+    }
+    
+    /// Sends a message to the client
+    pub fn send_msg(&self, cmd: Command, payload: &[&[u8]]) {
+        self.send_raw(self.build_msg(cmd, payload));
+    }
+    
+    /// Sends a response to the client
+    pub fn send_response(&self, code: ResponseCode, payload: &[&str]) {
+        self.send_raw(self.build_response(code, payload));
     }
 
     /// Sends an event to the client
     pub fn send(&self, evt: Event) {
+        // TODO handle error
         let _ = self.channel.send(evt);
     }
 
     /// Sends a raw message to the client
     pub fn send_raw(&self, msg: Vec<u8>) {
-        self.send(Event::RawMessage(msg));
+        self.send(Event::Message(msg));
     }
     
     /// Getter for info

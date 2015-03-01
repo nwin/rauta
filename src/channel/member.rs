@@ -1,5 +1,6 @@
 use std::collections::{HashSet};
 
+use client;
 use client::{ClientId, Client};
 use user::HostMask;
 use protocol::{Message, Command, ResponseCode};
@@ -18,10 +19,6 @@ pub struct Member {
     decorated_nick: String,
     flags: Flags,
 }
-
-
-
-
 
 impl Member {
     /// Creates a new member
@@ -59,6 +56,11 @@ impl Member {
     /// Sends a message to the client
     pub fn send_msg(&self, cmd: Command, payload: &[&[u8]]) {
         self.client.send_msg(cmd, payload)
+    }
+
+    /// Sends a message to the client
+    pub fn send(&self, event: client::Event) {
+        self.client.send(event)
     }
     
     /// Grant a privilege to a member

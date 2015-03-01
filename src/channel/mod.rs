@@ -1,14 +1,16 @@
+//! IRC channel model
+
 mod member;
+mod channel;
+
 use std::collections::HashSet;
 use std::num::FromPrimitive;
 
 use protocol::{Message, Params};
 use client::Client;
 
-/// Member of a channel
-struct Member {
-    client: Client
-}
+pub use self::channel::{Channel, Proxy};
+pub use self::member::{Member};
 
 /// Possible events that can be sent to a channel
 pub enum Event {
@@ -133,15 +135,6 @@ where Block: FnMut(Action, ChannelMode, Option<&[u8]>) {
 /// List of channel modes / member flags
 pub type Flags = HashSet<ChannelMode>;
 
-
-/// An IRC channel.
-///
-/// The IRC channel object manages it’s own members.
-/// This includes authentification, per channel bans etc.
-pub struct Channel {
-    members: Vec<Member>
-}
-
 #[cfg(test)]
 mod tests {
 	use super::{modes_do};
@@ -149,9 +142,7 @@ mod tests {
 	use super::Action::*;
 	use protocol::Message;
 	/// Tests the mode parser
-    
-    
-    
+        
 	#[test]
 	fn mode_parser() {
         let msgs = [

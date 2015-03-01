@@ -8,6 +8,7 @@
 #![feature(std_misc)]
 #![feature(core)]
 #![feature(box_syntax)]
+#![feature(unsafe_destructor)]
 #![allow(dead_code)]
 #![allow(unused_imports)]
 #![allow(unused_features)]
