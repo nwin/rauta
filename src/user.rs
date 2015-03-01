@@ -1,6 +1,5 @@
 //! Module containing everything related to users
 use std::mem;
-use client::ClientId;
 
 #[derive(Debug, PartialEq, Copy)]
 pub enum Status {

@@ -1,9 +1,4 @@
-use std::ops::Range;
-use std::str;
-use std::collections::hash_map::Entry::{Occupied, Vacant};
-
 use protocol::{ResponseCode, Message};
-use protocol::ResponseCode::*;
 use protocol::Command::USER;
 use client::Client;
 use server::Server;
@@ -21,6 +16,7 @@ pub struct Handler {
 
 impl MessageHandler for Handler {
     fn from_message(message: Message) -> Result<Handler, (ResponseCode, ErrorMessage)> {
+        use protocol::ResponseCode::*;
         if message.params().count() == 4 {
             let (username, realname) = {
                 let mut params = message.params();
@@ -42,6 +38,7 @@ impl MessageHandler for Handler {
         }
     }
     fn invoke(self, server: &mut Server, client: Client) {
+        use protocol::ResponseCode::*;
         use user::Status::*;
         let status = {
             // Prevent dead-lock

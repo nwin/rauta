@@ -1,6 +1,4 @@
 //! Message handler implementations
-use std::ops;
-
 use protocol::{Message, Command, ResponseCode};
 use server::Server;
 use client::Client;

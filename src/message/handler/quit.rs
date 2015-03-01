@@ -1,7 +1,6 @@
 use std::sync::Arc;
 
 use protocol::{Command, ResponseCode, Message};
-use protocol::ResponseCode::*;
 use client::{Client, MessageOrigin};
 use server::Server;
 use channel;

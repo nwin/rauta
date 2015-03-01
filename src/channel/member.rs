@@ -3,7 +3,7 @@ use std::collections::{HashSet};
 use client;
 use client::{ClientId, Client, MessageOrigin};
 use user::HostMask;
-use protocol::{Message, Command, ResponseCode};
+use protocol::{Command, ResponseCode};
 use super::{Flags, ChannelMode};
 use super::ChannelMode::{OperatorPrivilege, VoicePrivilege};
 

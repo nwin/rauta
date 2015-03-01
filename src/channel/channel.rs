@@ -9,7 +9,7 @@ use std::thunk::Invoke;
 
 
 use server;
-use protocol::{Message, ResponseCode};
+use protocol::{ResponseCode};
 use user::HostMask;
 use client::{ClientId, Client};
 use client;

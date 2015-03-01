@@ -11,7 +11,6 @@
 #![feature(unboxed_closures)]
 #![feature(unsafe_destructor)]
 #![allow(dead_code)]
-#![allow(unused_imports)]
 #![allow(unused_features)]
 
 #[macro_use]
@@ -26,6 +25,7 @@ pub mod message;
 pub mod client;
 pub mod user;
 pub mod channel;
+pub mod misc;
 
 #[cfg(test)]
 mod test;

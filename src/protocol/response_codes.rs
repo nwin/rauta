@@ -6,6 +6,8 @@ pub enum ResponseCode {
     RPL_WELCOME = 001,
     /// `<channel> :No topic is set`
     RPL_NOTOPIC = 331,
+    /// `<channel name> :No such channel`
+    ERR_NOSUCHCHANNEL = 403,
     /// `<subcommand> :<reason>`
     ERR_INVALIDCAPCMD = 410,
     /// `:No nickname given`

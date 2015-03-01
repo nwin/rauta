@@ -1,4 +1,3 @@
-use std::str;
 use std::sync::Arc;
 use std::ops::Range;
 use std::collections::hash_map::Entry::{Occupied, Vacant};
@@ -8,8 +7,8 @@ use protocol::ResponseCode::*;
 use protocol::Command::JOIN;
 use client::{Client, MessageOrigin};
 use server::Server;
-use user;
 use channel::{Channel, Member, Event};
+use misc;
 
 use super::{MessageHandler, ErrorMessage};
 
@@ -30,8 +29,18 @@ impl MessageHandler for Handler {
                 let mut start = 0;
                 for channel_name in channels.split(|c| *c == b',') {
                     let len = channel_name.len();
-                    // TODO validate channel
-                    targets.push((Some(start..start+len), None));
+                    match misc::verify_channel(channel_name) {
+                        Some(_) => {
+                            targets.push((Some(start..start+len), None));
+                        },
+                        None => return Err((
+                            ERR_NEEDMOREPARAMS,
+                            ErrorMessage::WithSubject(
+                                String::from_utf8_lossy(channel_name).into_owned(), 
+                                "Invalid channel name"
+                            )
+                        ))
+                    }
                     start += len + 1
                 }
                 if let Some(passwords) = params.next() {

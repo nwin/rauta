@@ -6,8 +6,7 @@ mod channel;
 use std::collections::HashSet;
 use std::num::FromPrimitive;
 
-use protocol::{Message, Params};
-use client::Client;
+use protocol::{Params};
 
 pub use self::channel::{Event, Channel, Proxy};
 pub use self::member::{Member};
