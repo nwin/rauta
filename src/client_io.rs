@@ -8,7 +8,6 @@ use std::default::Default;
 use mio::{EventLoop, Handler, Token, TryRead, MioResult};
 use mio::net::tcp::TcpStream;
 use mio::buf::{RingBuf, MutBuf, Buf};
-use mio::NonBlock::*;
 use mio;
 
 use client::ClientId;

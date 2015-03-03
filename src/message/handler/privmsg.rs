@@ -1,16 +1,11 @@
 use std::sync::Arc;
-use std::ops::Range;
-use std::collections::hash_map::Entry::{Occupied, Vacant};
 
 use protocol::{ResponseCode, Message};
 use protocol::ResponseCode::*;
 use protocol::Command::PRIVMSG;
 use client::{Client, MessageOrigin};
 use client;
-use user;
 use server::Server;
-use channel::{Channel, Member, Event};
-use channel;
 use misc::Receiver;
 use misc;
 

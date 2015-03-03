@@ -127,15 +127,9 @@ impl Channel {
 
     /// Message dispatcher
     fn dispatch(&mut self, event: Event) {
-        use std::mem; // workaround until FnOnce is object safe
         match event {
             Handle(handler) => handler.invoke(self),
             HandleMut(handler) => handler.invoke(self),
-            //Message(command, client_id, message) => {
-            //    match command {
-            //        PRIVMSG => self.handle_privmsg(client_id, message),
-            //    }
-            //}
         }
     }
     

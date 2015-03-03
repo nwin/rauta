@@ -7,7 +7,7 @@ use protocol::ResponseCode::*;
 use protocol::Command::JOIN;
 use client::{Client, MessageOrigin};
 use server::Server;
-use channel::{Channel, Member, Event};
+use channel::{Channel, Member};
 use misc;
 
 use super::{MessageHandler, ErrorMessage};

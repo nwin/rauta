@@ -1,6 +1,4 @@
 use std::sync::Arc;
-use std::ops::Range;
-use std::collections::hash_map::Entry::{Occupied, Vacant};
 
 use protocol::{ResponseCode, Message};
 use protocol::ResponseCode::*;
@@ -8,7 +6,7 @@ use protocol::Command::MODE;
 use client::{Client, MessageOrigin};
 use user;
 use server::Server;
-use channel::{Channel, Member, Event};
+use channel::Channel;
 use channel;
 use misc::Receiver;
 use misc;

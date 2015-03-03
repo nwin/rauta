@@ -1,13 +1,8 @@
-use std::str;
 use std::ops::Range;
-use std::collections::hash_map::Entry::{Occupied, Vacant};
-
+    
 use protocol::{ResponseCode, Message};
-use protocol::ResponseCode::*;
 use client::Client;
 use server::Server;
-use user;
-use channel::{Channel, Event};
 use misc;
 
 use super::{MessageHandler, ErrorMessage};

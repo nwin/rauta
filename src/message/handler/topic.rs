@@ -1,15 +1,11 @@
-use std::str;
-use std::ops::Range;
 use std::sync::Arc;
-use std::collections::hash_map::Entry::{Occupied, Vacant};
 
 use protocol::{ResponseCode, Message};
 use protocol::ResponseCode::*;
 use protocol::Command::TOPIC;
 use client::{Client, MessageOrigin};
 use server::Server;
-use user;
-use channel::{Channel, Event};
+use channel::Channel;
 use channel::ChannelMode::TopicProtect;
 use misc;
 
