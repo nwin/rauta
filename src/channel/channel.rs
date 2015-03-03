@@ -232,33 +232,45 @@ impl Channel {
     }
     
     /// Adds a ban mask to the channel
-    pub fn add_ban_mask(&mut self, mask: HostMask) -> bool {
-        self.ban_masks.insert(mask)
+    pub fn add_ban_mask(&mut self, mask: HostMask) {
+        self.ban_masks.insert(mask);
+        self.add_flag(ChannelMode::BanMask);
     }
     
     /// Removes a ban mask from the channel
-    pub fn remove_ban_mask(&mut self, mask: HostMask) -> bool {
-        self.ban_masks.remove(&mask)
+    pub fn remove_ban_mask(&mut self, mask: HostMask) {
+        self.ban_masks.remove(&mask);
+        if self.ban_masks.is_empty() {
+            self.remove_flag(ChannelMode::BanMask);
+        }
     }
     
     /// Adds a ban mask to the channel
-    pub fn add_except_mask(&mut self, mask: HostMask) -> bool {
-        self.except_masks.insert(mask)
+    pub fn add_except_mask(&mut self, mask: HostMask) {
+        self.except_masks.insert(mask);
+        self.add_flag(ChannelMode::ExceptionMask);
     }
     
     /// Removes a ban mask from the channel
-    pub fn remove_except_mask(&mut self, mask: HostMask) -> bool {
-        self.except_masks.remove(&mask)
+    pub fn remove_except_mask(&mut self, mask: HostMask) {
+        self.except_masks.remove(&mask);
+        if self.except_masks.is_empty() {
+            self.remove_flag(ChannelMode::ExceptionMask);
+        }
     }
     
     /// Adds a ban mask to the channel
-    pub fn add_invite_mask(&mut self, mask: HostMask) -> bool {
-        self.invite_masks.insert(mask)
+    pub fn add_invite_mask(&mut self, mask: HostMask) {
+        self.invite_masks.insert(mask);
+        self.add_flag(ChannelMode::InvitationMask);
     }
     
     /// Removes a ban mask from the channel
-    pub fn remove_invite_mask(&mut self, mask: HostMask) -> bool {
-        self.invite_masks.remove(&mask)
+    pub fn remove_invite_mask(&mut self, mask: HostMask) {
+        self.invite_masks.remove(&mask);
+        if self.invite_masks.is_empty() {
+            self.remove_flag(ChannelMode::InvitationMask);
+        }
     }
     
     /// Getter for the ban masks

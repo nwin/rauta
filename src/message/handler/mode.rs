@@ -100,14 +100,42 @@ pub fn handle_mode(channel: &mut channel::Channel, client: Client, message: Mess
         None => false
     }};
     if message.params().count() > 1 {
-        if !is_op { 
-            client.send_response(ERR_CHANOPRIVSNEEDED,
-                &[channel.name(), "You are not a channel operator"], 
-            );
-            return 
-        }
         let mut params = message.params(); let _ = params.next();
         channel::modes_do(params, | action, mode, parameter | {
+            // Allow sending list responses to non-ops
+            if parameter.is_none() && (action != Remove)
+            && [BanMask, ExceptionMask, InvitationMask].contains(&mode)
+            {
+                let (start_code, end_code, masks) = match mode {
+                    BanMask => (
+                        RPL_BANLIST,
+                        RPL_ENDOFBANLIST,
+                        channel.ban_masks()
+                    ),
+                    ExceptionMask => (
+                        RPL_EXCEPTLIST,
+                        RPL_ENDOFEXCEPTLIST,
+                        channel.except_masks()
+                    ),
+                    InvitationMask => (
+                        RPL_INVITELIST,
+                        RPL_ENDOFINVITELIST,
+                        channel.invite_masks()
+                    ),
+                    _ => unreachable!()
+                };
+                let sender = channel.list_sender(
+                    &client, start_code, end_code
+                );
+                for mask in masks.iter() {
+                    sender.feed_line_single(mask.as_str())
+                }
+            } else if !is_op { 
+                client.send_response(ERR_CHANOPRIVSNEEDED,
+                    &[channel.name(), "You are not a channel operator"], 
+                );
+                return 
+            }
             match mode {
                 AnonChannel | InviteOnly | Moderated | MemberOnly 
                 | Quiet | Private | Secret | ReOpFlag | TopicProtect => {
@@ -180,53 +208,29 @@ pub fn handle_mode(channel: &mut channel::Channel, client: Client, message: Mess
                         let host_mask = user::HostMask::new(
                             String::from_utf8_lossy(mask).to_string()
                         );
+                        if action != Show {
+                            broadcast_change(channel, &client, action, mode, Some(host_mask.as_str()))
+                        }
                         match mode {
                             BanMask => match action {
                                 Add => {channel.add_ban_mask(host_mask);},
                                 Remove => {channel.remove_ban_mask(host_mask);},
-                                Show => {} // handled above
+                                Show => {} // handled below
                             },
                             ExceptionMask => match action {
                                 Add => {channel.add_except_mask(host_mask);},
                                 Remove => {channel.remove_except_mask(host_mask);},
-                                Show => {} // handled above
+                                Show => {} // handled below
                             },
                             InvitationMask => match action {
                                 Add => {channel.add_invite_mask(host_mask);},
                                 Remove => {channel.remove_invite_mask(host_mask);},
-                                Show => {} // handled above
+                                Show => {} // handled below
                             },
                             _ => unreachable!()
                         }
                     },
-                    None => {
-                        let (start_code, end_code, masks) = match mode {
-                            BanMask => (
-                                RPL_BANLIST,
-                                RPL_ENDOFBANLIST,
-                                channel.ban_masks()
-                            ),
-                            ExceptionMask => (
-                                RPL_EXCEPTLIST,
-                                RPL_ENDOFEXCEPTLIST,
-                                channel.except_masks()
-                            ),
-                            InvitationMask => (
-                                RPL_INVITELIST,
-                                RPL_ENDOFINVITELIST,
-                                channel.invite_masks()
-                            ),
-                            _ => unreachable!()
-                        };
-                        let sender = channel.list_sender(
-                            &client, start_code, end_code
-                        );
-                        for mask in masks.iter() {
-                            sender.feed_line_single(mask.as_str())
-                        }
-                        sender.end_of_list()
-                    }
-                    
+                    None => () // handled above
                 },
                 ChannelCreator => {
                     match action {
