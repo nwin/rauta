@@ -8,7 +8,7 @@ use std::sync::{RwLock, Arc};
 use std::sync::mpsc::Sender;
 use std::default::Default;
 
-use mio::{EventLoop, EventLoopSender, Handler, Token, TryRead, TryWrite};
+use mio::{EventLoop, EventLoopSender, Handler, Token, TryRead, TryWrite, PollOpt, Interest};
 use mio::net::tcp::TcpStream;
 use mio::buf::{RingBuf, MutBuf, Buf};
 use mio::NonBlock::*;
@@ -67,7 +67,11 @@ impl Worker {
             self.host.clone(),
         );
         let token = id.token();
-        if let Ok(()) = event_loop.register(&mut stream, token) {
+        if let Ok(()) = event_loop.register_opt(
+                &mut stream, token, 
+                Interest::readable() | Interest::writable() | Interest::hup(), 
+                PollOpt::edge()
+        ) {
             self.streams.insert(token, stream);
             self.clients.insert(token, client.clone());
             self.readers.insert(token, Default::default());
