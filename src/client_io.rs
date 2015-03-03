@@ -3,19 +3,23 @@ use std::collections::HashMap;
 use std::error::FromError;
 use std::io;
 use std::mem;
+use std::sync::Arc;
+use std::sync::mpsc::Sender;
 use std::default::Default;
 
-use mio::{EventLoop, Handler, Token, TryRead, MioResult};
+use mio::{EventLoop, Handler, Token, TryRead};
 use mio::net::tcp::TcpStream;
 use mio::buf::{RingBuf, MutBuf, Buf};
 use mio;
 
 use client::ClientId;
+use server;
 
 use self::Event::*;
 
 pub enum Event {
     NewConnection(TcpStream),
+    Shutdown
 }
 
 /// Worker thread
@@ -23,11 +27,26 @@ pub struct Worker {
     tokens: HashMap<Token, ClientId>, 
     streams: HashMap<ClientId, TcpStream>,
     readers: HashMap<ClientId, MessageReader>,
-    counter: usize
+    counter: usize,
+    server_tx: Sender<server::Event>,
+    host: Arc<String>
 
 }
 
 impl Worker {
+
+    pub fn new(tx: Sender<server::Event>, host: Arc<String>) -> Worker {
+        Worker {
+            tokens: HashMap::new(),
+            streams: HashMap::new(),
+            readers: HashMap::new(),
+            counter: 0,
+            server_tx: tx,
+            host: host
+
+        }
+    }
+
     /// Registers a new connection
     fn register_connection(&mut self, mut stream: TcpStream, 
                            event_loop: &mut EventLoop<(), Event>) -> io::Result<()>
@@ -66,6 +85,9 @@ impl Handler<(), Event> for Worker {
             NewConnection(stream) => {
                 // If it didn’t work the client closed the connection, never mind.
                 let _ = self.register_connection(stream, event_loop);
+            },
+            Shutdown => {
+                event_loop.shutdown()
             }
         }
     }
@@ -90,7 +112,7 @@ impl Handler<(), Event> for Worker {
         }
     }
 }
-
+/*
 impl Default for Worker {
     fn default() -> Worker {
         Worker {
@@ -102,17 +124,17 @@ impl Default for Worker {
         }
     }
 }
-
+*/
 #[derive(Debug)]
 enum MessageError {
     TooLong,
     Malformed,
-    MioError(mio::MioError)
+    IoError(io::Error)
 }
 
-impl FromError<mio::MioError> for MessageError {
-    fn from_error(err: mio::MioError) -> MessageError {
-        MessageError::MioError(err)
+impl FromError<io::Error> for MessageError {
+    fn from_error(err: io::Error) -> MessageError {
+        MessageError::IoError(err)
     }
 }
 
@@ -141,7 +163,7 @@ impl MessageReader {
             got_r: false
         }
     }
-    fn feed<R: TryRead>(&mut self, r: &mut R) -> mio::MioResult<&mut MessageReader> {
+    fn feed<R: TryRead>(&mut self, r: &mut R) -> io::Result<&mut MessageReader> {
         try!(r.read(&mut self.buf.writer()));
         Ok(self)
     }
