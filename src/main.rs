@@ -4,6 +4,8 @@
 #![feature(test)]
 #![feature(libc)]
 #![feature(old_io)]
+#![feature(io)]
+#![feature(net)]
 #![feature(alloc)]
 #![feature(std_misc)]
 #![feature(core)]
@@ -19,6 +21,7 @@ extern crate log;
 extern crate env_logger;
 
 extern crate rand;
+extern crate mio;
 
 pub mod net;
 pub mod protocol;
@@ -28,6 +31,7 @@ pub mod client;
 pub mod user;
 pub mod channel;
 pub mod misc;
+pub mod client_io;
 
 #[cfg(test)]
 mod test;

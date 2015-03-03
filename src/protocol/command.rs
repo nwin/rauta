@@ -37,15 +37,15 @@ impl fmt::Display for Command {
 }}
 
 commands!{
-    //PRIVMSG     #[doc = "`PRIVMSG` command"];
+    PRIVMSG     #[doc = "`PRIVMSG <msgtarget> <text to be sent>`"];
     //NOTICE      #[doc = "`NOTICE` command"];
     MODE        #[doc = "`MODE` command"];
     JOIN        #[doc = "`JOIN ( <channel> *( \",\" <channel> ) [ <key> *( \",\" <key> ) ] )/ \"0\""];
     //PING        #[doc = "`PING` command"];
     WHO         #[doc = "`WHO [ <mask> [ \"o\" ] ]`"];
-    //NAMES       #[doc = "`NAMES` command"];
-    //TOPIC       #[doc = "`TOPIC` command"];
-    //PART        #[doc = "`PART` command"];
+    NAMES       #[doc = "`NAMES [ <channel> *( \",\" <channel> ) [ <target> ] ]`"];
+    TOPIC       #[doc = "``TOPIC <channel> [ <topic> ]`"];
+    PART        #[doc = "`PART <channel> *( \",\" <channel> ) [ <Part Message> ]`"];
     QUIT        #[doc = "`QUIT [<reason>]` "];
     //PONG        #[doc = "`PONG` command"];
     NICK        #[doc = "`NICK <nickname> [ <hopcount> ]`"];

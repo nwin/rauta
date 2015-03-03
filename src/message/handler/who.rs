@@ -12,8 +12,23 @@ use user;
 
 use super::{MessageHandler, ErrorMessage};
 
-/// Handler for NICK command.
-/// NICK nickname
+/// Handles the WHO message
+/// The reply consists of two parts:
+/// 
+/// ```
+/// 352    RPL_WHOREPLY
+///        "<channel> <user> <host> <server> <nick>
+///        ( "H" / "G" > ["*"] [ ( "@" / "+" ) ]
+///        :<hopcount> <real name>"
+/// 
+/// 315    RPL_ENDOFWHO
+///        "<name> :End of WHO list"
+/// ```
+/// 
+/// Unfortunately the RFC 2812 does not specify what H, G, *, @ or + mean.
+/// @/+ is op/voice.
+/// * is maybe irc op
+/// H/G means here/gone in terms of the away status
 #[derive(Debug)]
 pub struct Handler {
     msg: Message,
@@ -51,7 +66,6 @@ impl Handler {
 }
 
 pub fn handle_who(channel: &Channel, client: Client, op_only: bool) {
-    debug!("in who");
     let sender = channel.list_sender(&client, RPL_WHOREPLY, RPL_ENDOFWHO);
     if (channel.has_flag(Private) || channel.has_flag(Secret))
     && !channel.member_with_id(client.id()).is_some() {
@@ -60,7 +74,6 @@ pub fn handle_who(channel: &Channel, client: Client, op_only: bool) {
         // always sent.
         drop(sender);
     } else {
-    debug!("in who 2");
         for member in channel.members() {
             if !op_only || member.is_op() {
                 sender.feed_line(&[

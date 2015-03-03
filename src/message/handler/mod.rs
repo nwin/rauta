@@ -7,9 +7,13 @@ mod cap;
 mod nick;
 mod user;
 mod quit;
+mod part;
 mod join;
+mod topic;
 mod mode;
 mod who;
+mod names;
+mod privmsg;
 
 pub trait MessageHandler {
     fn from_message(message: Message) -> Result<Self, (ResponseCode, ErrorMessage)>;
@@ -52,9 +56,13 @@ pub fn invoke(message: Message, server: &mut Server, client: Client) {
 }}
 
 handle!{
+    PRIVMSG with self::privmsg::Handler,
     JOIN with self::join::Handler,
     WHO with self::who::Handler,
     MODE with self::mode::Handler,
+    TOPIC with self::topic::Handler,
+    NAMES with self::names::Handler,
+    PART with self::part::Handler,
     QUIT with self::quit::Handler,
     CAP with self::cap::Handler,
     NICK with self::nick::Handler,

@@ -12,8 +12,7 @@ use misc;
 
 use super::{MessageHandler, ErrorMessage};
 
-/// Handler for NICK command.
-/// NICK nickname
+/// Handler for JOIN command
 #[derive(Debug)]
 pub struct Handler {
     msg: Message,

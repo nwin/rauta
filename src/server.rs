@@ -144,6 +144,14 @@ impl Server {
         &mut self.nicks
     }
 
+    /// Gets a client
+    pub fn client_with_name(&self, name: &str) -> Option<&Client> {
+        match self.nicks.get(name) {
+            Some(id) => self.clients.get(id),
+            None => None
+        }
+    }
+
     /// Getter for tx for sending to main event loop
     /// Panics if the main loop is not started
     pub fn tx(&mut self) ->  &Sender<Event> {

@@ -8,7 +8,7 @@ use super::{MessageHandler, ErrorMessage};
 use user;
 
 /// Handler for CAP command.
-/// CAP subcommand [params]
+/// `CAP subcommand [params]`
 #[derive(Debug)]
 pub struct Handler {
     msg: Message,

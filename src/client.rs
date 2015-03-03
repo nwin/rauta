@@ -8,6 +8,9 @@ use std::old_io::{BufferedWriter};
 use std::old_io::net::tcp::TcpStream;
 use std::old_io::net::ip::IpAddr;
 use std::thread::spawn;
+use mio;
+use std::io;
+use std::net;
 
 use rand;
 
@@ -47,6 +50,35 @@ impl ClientId {
                 rand::random()
             ]
         }
+    }
+    /// The client id is losely inspired by SILC but the silc
+    /// method of also using the nickname for this is not applicable to IRC
+    pub fn new_mio(stream: &mio::net::tcp::TcpStream) -> io::Result<ClientId> {
+        Ok(ClientId { 
+            id: [
+                (match try!(stream.socket_addr()).ip() {
+                    net::IpAddr::V4(addr) => {
+                        let [a, b, c, d] = addr.octets();
+                        (a as u32) <<24 | (b as u32)<<16 | (c as u32)<<8 | d as u32
+                    },
+                    net::IpAddr::V6(addr) => {
+                        let [_, _, _, _, _, _, a, b] = addr.segments();
+                        (a as u32)  << 16 | b as u32
+                    },
+                } as u64) << 32
+                | match try!(stream.peer_addr()).ip() {
+                    net::IpAddr::V4(addr) => {
+                        let [a, b, c, d] = addr.octets();
+                        (a as u32) <<24 | (b as u32)<<16 | (c as u32)<<8 | d as u32
+                    },
+                    net::IpAddr::V6(addr) => {
+                        let [_, _, _, _, _, _, a, b] = addr.segments();
+                        (a as u32)  << 16 | b as u32
+                    },
+                } as u64, 
+                rand::random()
+            ]
+        })
     }
 }
 
@@ -180,7 +212,10 @@ impl Client {
 
         let msg = match origin { 
             Server => format!(":{prefix} {cmd}", prefix=&*self.hostname, cmd=cmd),
-            User => format!(":{prefix} {cmd}", prefix=&*self.nick(), cmd=cmd),
+            //User => format!(":{prefix} {cmd}", prefix=&*self.nick(), cmd=cmd),
+            User => format!(":{mask} {cmd}", 
+                mask=self.info().public_hostmask().as_str(),
+                cmd=cmd),
         }.into_bytes();
         self.push_tail(msg, payload)
     }

@@ -84,6 +84,12 @@ impl Member {
     fn has_privilege(&self, privilege: ChannelMode) -> bool {
         self.flags.contains(&privilege)
     }
+        
+    /// Checks whether a member has the voice privilege
+    pub fn has_voice(&self) -> bool {
+        self.has_privilege(VoicePrivilege) 
+        || self.has_privilege(OperatorPrivilege) 
+    }
     
     /// Get flag as string
     pub fn decoration(&self) -> String {
@@ -99,12 +105,6 @@ impl Member {
     /// Checks whether a member is the operator of the channel
     pub fn is_op(&self) -> bool {
         self.has_privilege(OperatorPrivilege) 
-    }
-    
-    /// Checks whether a member has the voice privilege
-    pub fn has_voice(&self) -> bool {
-        self.has_privilege(VoicePrivilege) 
-        || self.has_privilege(OperatorPrivilege) 
     }
     
     /// Checks if any of members host mask matches any in the given set

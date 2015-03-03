@@ -40,7 +40,7 @@ pub fn verify_nick<'a>(nick: &'a [u8]) -> Option<&'a str> {
 pub fn valid_channel(channel: &str) -> bool {
     for (i, char) in channel.chars().enumerate() {
         match char {
-            '#' | '&' if i == 0 => {},
+            '#' | '&' | '+' | '!' if i == 0 => {},
             _ if i == 0 => { return false },
             ' ' | '\x07' | ',' => { return false }
             _ => {}

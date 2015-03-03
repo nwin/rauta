@@ -1,10 +1,16 @@
 [package]
-
 name = "rauta"
 version = "0.0.1"
 authors = ["nwin <nwin@users.noreply.github.com>"]
+
+#[lib]
+#name = "rauta"
+#path = "src/main.rs"
 
 [dependencies]
 log = "*"
 env_logger = "*"
 rand = "*"
+
+[dependencies.mio]
+git = "https://github.com/carllerche/mio"

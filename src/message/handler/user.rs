@@ -5,8 +5,7 @@ use server::Server;
 use super::{MessageHandler, ErrorMessage};
 use user;
 
-/// Handler for NICK command.
-/// NICK nickname
+/// Handler for USER command
 #[derive(Debug)]
 pub struct Handler {
     msg: Message,

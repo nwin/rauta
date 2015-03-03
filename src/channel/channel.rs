@@ -36,6 +36,18 @@ impl Proxy {
         }
     }
 
+    /// Evecutes a function on a channel worker thread
+    pub fn with_ref_mut<F>(&self, fn_once: F)
+    where F: FnOnce(&mut Channel) + Send + 'static {
+        self.send(Event::HandleMut(box fn_once))
+    }
+
+    /// Evecutes a function on a channel worker thread
+    pub fn with_ref<F>(&self, fn_once: F)
+    where F: FnOnce(&Channel) + Send + 'static {
+        self.send(Event::Handle(box fn_once))
+    }
+
     /// Sends an event to the channel
     pub fn send(&self, event: Event) {
         match self.tx.send(event) {
@@ -155,19 +167,54 @@ impl Channel {
     pub fn password(&self) -> &Option<Vec<u8>> {
         &self.password
     }
+
     /// Setter for the channel password
     pub fn set_password(&mut self, password: Option<Vec<u8>>) {
         self.password = password
+    }
+
+    /// Queries whether the channel is secret
+    pub fn is_secret(&self) -> bool {
+        self.has_flag(ChannelMode::Secret)
     }
     
     /// Returns the member count
     pub fn member_count(&self) -> usize {
         self.members.len()
     }
+
+    /// Queries whether the client is a member of this channel
+    pub fn is_member(&self, client: &Client) -> bool {
+        self.member_with_id(client.id()).is_some()
+    }
     
     /// Returns a view into the channel members
     pub fn members<'a>(&'a self) -> hash_map::Values<'a, String, Member> {
         self.members.values()
+    }
+    
+    pub fn member_with_id(&self, client_id: ClientId) -> Option<&Member> {
+        let nick = self.nicknames.get(&client_id).clone();
+        match nick {
+            Some(nick) => self.members.get(nick),
+            None => None
+        }
+    }
+    
+    pub fn mut_member_with_id(&mut self, client_id: ClientId) -> Option<&mut Member> {
+        let nick = self.nicknames.get(&client_id).clone();
+        match nick {
+            Some(nick) => self.members.get_mut(nick),
+            None => None
+        }
+    }
+    
+    pub fn member_with_nick(&self, nick: &String) -> Option<&Member> {
+        self.members.get(nick)
+    }
+    
+    pub fn mut_member_with_nick(&mut self, nick: &String) -> Option<&mut Member> {
+        self.members.get_mut(nick)
     }
     
     /// Adds a flag to the channel
@@ -265,30 +312,6 @@ impl Channel {
         )
     }
     
-    pub fn member_with_id(&self, client_id: ClientId) -> Option<&Member> {
-        let nick = self.nicknames.get(&client_id).clone();
-        match nick {
-            Some(nick) => self.members.get(nick),
-            None => None
-        }
-    }
-    
-    pub fn mut_member_with_id(&mut self, client_id: ClientId) -> Option<&mut Member> {
-        let nick = self.nicknames.get(&client_id).clone();
-        match nick {
-            Some(nick) => self.members.get_mut(nick),
-            None => None
-        }
-    }
-    
-    pub fn member_with_nick(&self, nick: &String) -> Option<&Member> {
-        self.members.get(nick)
-    }
-    
-    pub fn mut_member_with_nick(&mut self, nick: &String) -> Option<&mut Member> {
-        self.members.get_mut(nick)
-    }
-    
     /// Broadcasts a message to all members
     #[inline]
     pub fn broadcast_raw(&self, msg: Arc<Vec<u8>>) {
@@ -299,8 +322,9 @@ impl Channel {
 
     /// Sends the list of users to the client
     pub fn send_names(&self, client: &Client) {
-        // TODO check if channel is visible to user…
-        // TODO replace with generic list sending function
+        if self.has_flag(ChannelMode::Secret) && !self.is_member(client) {
+            return
+        }
         let sender = self.prefixed_list_sender(
             client, ResponseCode::RPL_NAMREPLY, ResponseCode::RPL_ENDOFNAMES, Some("=")
         );

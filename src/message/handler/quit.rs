@@ -8,7 +8,7 @@ use channel;
 use super::{MessageHandler, ErrorMessage};
 
 /// Handler for NICK command.
-/// NICK nickname
+/// `NICK nickname`
 #[derive(Debug, Clone)]
 pub struct Handler {
     msg: Message,
@@ -24,7 +24,7 @@ impl MessageHandler for Handler {
         // Re-generate the message to ensure it is is well-formed
         let msg = Arc::new(match self.reason() {
             Some(reason) => client.build_msg(Command::QUIT, &[reason], MessageOrigin::User),
-            None => client.build_msg(Command::QUIT, &[(&*client.nick()).as_bytes()], MessageOrigin::User)
+            None => client.build_msg(Command::QUIT, &[], MessageOrigin::User)
         });
         // TODO make this faster
         for (_, proxy) in server.channels().iter() {
