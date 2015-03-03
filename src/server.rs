@@ -1,6 +1,7 @@
 //! Server model
 
-use std::old_io as io;
+use std::io;
+use std::old_io;
 use std::old_io::net;
 use std::old_io::{Acceptor, Listener, IoResult};
 use std::old_io::net::tcp::{TcpListener};
@@ -21,7 +22,8 @@ pub struct Server {
     clients: HashMap<ClientId, Client>,
     nicks: HashMap<String, ClientId>,
     channels: HashMap<String, channel::Proxy>,
-    tx: Option<Sender<Event>>,
+    tx: Sender<Event>,
+    rx: Receiver<Event>,
 }
 
 pub enum Event {
@@ -40,12 +42,13 @@ impl Server {
             |&v| match v { &net::ip::Ipv4Addr(_, _, _, _) => true, _ => false }
         ).nth(0) {
             Some(ip) => ip,
-            None => return Err(io::IoError {
-                kind: io::OtherIoError,
+            None => return Err(old_io::IoError {
+                kind: old_io::OtherIoError,
                 desc: "Cannot get host IP address.",
                 detail: None
             })
         };
+        let (tx, rx) = channel();
         Ok(Server {
             host: host.to_string(),
             ip: format!("{}", ip),
@@ -53,7 +56,8 @@ impl Server {
             clients: HashMap::new(),
             nicks: HashMap::new(),
             channels: HashMap::new(),
-            tx: None
+            tx: tx,
+            rx: rx
         })
     }
     
@@ -61,8 +65,10 @@ impl Server {
     pub fn serve_forever(mut self) -> IoResult<Server> {
         use self::Event::{Connected, InboundMessage};
         // todo change this to a more general event dispatching loop
-        let (tx, rx) = try!(self.listen());
-        self.tx = Some(tx);
+        // this is broken now, transition to mio
+        let rx = self.rx;
+        let (_, rx1) = channel();
+        self.rx = rx1;
         for event in rx.iter() {
             match event {
                 InboundMessage(id, msg) => {
@@ -80,12 +86,26 @@ impl Server {
         Ok(self)
     }
 
-    fn listen(&self) -> IoResult<(Sender<Event>, Receiver<Event>)>  {
-        let listener = TcpListener::bind(&*format!("{}:{}", self.ip, self.port));
+    fn run_mio(&mut self) -> io::Result<()>  {
+        let port = try!(mio::net::tcp::TcpListener::bind(&*format!("{}:{}", self.ip, self.port)));
         info!("started listening on {}:{} ({})", self.ip, self.port, self.host);
+        let mut server_loop = try!(EventLoop::new());
+        let mut client_loop = try!(EventLoop::new());
+        try!(server_loop.register(&port, Token(self.port as usize)));
+        let host = Arc::new(self.host.clone());
+        let tx = self.tx.clone();
+        spawn(move || {
+            use client_io::Worker;
+            let _ = client_loop.run(&mut Worker::new(tx, host)).unwrap();
+        });
+        server_loop.run(self)
+    }
+
+    fn listen(&self) -> IoResult<()>  {
+        let listener = TcpListener::bind((&*self.ip, self.port));
+        info!("started listening on {}:{} ({})", self.host, self.port, self.ip);
         let mut acceptor = try!(listener.listen());
-        let (tx, rx) = channel();
-        let debug_tx = tx.clone(); // This is not really needed, only for debugging and testing
+        let tx = self.tx.clone();
         let host = Arc::new(self.host.clone());
         spawn(move || {
             for maybe_stream in acceptor.incoming() {
@@ -98,7 +118,7 @@ impl Server {
                 }
             }
         });
-        Ok((debug_tx, rx))
+        Ok(())
     }
 
     /// Sends a response to the client
@@ -157,7 +177,28 @@ impl Server {
     /// Getter for tx for sending to main event loop
     /// Panics if the main loop is not started
     pub fn tx(&mut self) ->  &Sender<Event> {
-        self.tx.as_ref().unwrap()
+        &self.tx
+    }
+}
+
+use mio::{EventLoop, Handler, Token};
+use mio;
+
+impl Handler<(), Event> for Server {
+    fn notify(&mut self, _: &mut EventLoop<(), Event>, msg: Event) {
+        use self::Event::*;
+        match msg {
+            InboundMessage(id, msg) => {
+                if let Some(client) = self.clients.get(&id).map(|c| c.clone()) {
+                    message_handler::invoke(msg, self, client)
+                }
+                
+            }
+            Connected(client) => {
+                let id = client.id();
+                self.clients.insert(id, client);
+            }
+        }
     }
 }
 
@@ -170,6 +211,7 @@ pub fn get_test_server() -> Server {
         clients: HashMap::new(),
         nicks: HashMap::new(),
         channels: HashMap::new(),
-        tx: None,
+        tx: unintialized!(),
+        rx: unintialized!(),
     }
 }
