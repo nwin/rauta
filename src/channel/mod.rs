@@ -8,7 +8,7 @@ use std::num::FromPrimitive;
 
 use protocol::{Params};
 
-pub use self::channel::{Event, Channel, Proxy};
+pub use self::channel::{Channel, Proxy};
 pub use self::member::{Member};
 
 /// Enumeration of possible channel modes
@@ -53,7 +53,7 @@ pub enum ChannelMode {
     InvitationMask = b'I' as isize
 }
 
-// Actions which determine what to do with a mode
+/// Actions which determine what to do with a mode
 #[derive(PartialEq, Eq, Debug, Copy)]
 pub enum Action {
     // Add a flag

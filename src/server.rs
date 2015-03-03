@@ -1,3 +1,5 @@
+//! Server model
+
 use std::old_io as io;
 use std::old_io::net;
 use std::old_io::{Acceptor, Listener, IoResult};
@@ -9,7 +11,7 @@ use std::collections::HashMap;
 
 use protocol::{Command, ResponseCode, Message};
 use client::{ClientId, Client, MessageOrigin};
-use message::handler;
+use message_handler;
 use channel;
 
 pub struct Server {
@@ -65,7 +67,7 @@ impl Server {
             match event {
                 InboundMessage(id, msg) => {
                     if let Some(client) = self.clients.get(&id).map(|c| c.clone()) {
-                        handler::invoke(msg, &mut self, client)
+                        message_handler::invoke(msg, &mut self, client)
                     }
                     
                 }

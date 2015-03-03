@@ -1,4 +1,4 @@
-//! A IRC server
+//! An IRC server
 
 #![feature(collections)]
 #![feature(test)]
@@ -26,7 +26,7 @@ extern crate mio;
 pub mod net;
 pub mod protocol;
 pub mod server;
-pub mod message;
+pub mod message_handler;
 pub mod client;
 pub mod user;
 pub mod channel;

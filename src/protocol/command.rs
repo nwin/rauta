@@ -40,11 +40,11 @@ commands!{
     PRIVMSG     #[doc = "`PRIVMSG <msgtarget> <text to be sent>`"];
     //NOTICE      #[doc = "`NOTICE` command"];
     MODE        #[doc = "`MODE <channel> {[+|-]|o|p|s|i|t|n|b|v} [<limit>] [<user>] [<ban mask>]`"];
-    JOIN        #[doc = "`JOIN ( <channel> *( \",\" <channel> ) [ <key> *( \",\" <key> ) ] )/ \"0\""];
+    JOIN        #[doc = "`JOIN ( <channel> *( \",\" <channel> ) [ <key> *( \",\" <key> ) ] )/ \"0\"`"];
     //PING        #[doc = "`PING` command"];
     WHO         #[doc = "`WHO [ <mask> [ \"o\" ] ]`"];
     NAMES       #[doc = "`NAMES [ <channel> *( \",\" <channel> ) [ <target> ] ]`"];
-    TOPIC       #[doc = "``TOPIC <channel> [ <topic> ]`"];
+    TOPIC       #[doc = "`TOPIC <channel> [ <topic> ]`"];
     PART        #[doc = "`PART <channel> *( \",\" <channel> ) [ <Part Message> ]`"];
     QUIT        #[doc = "`QUIT [<reason>]`"];
     //PONG        #[doc = "`PONG` command"];

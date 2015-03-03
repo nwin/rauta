@@ -1,3 +1,5 @@
+//! Protocol related data structures and functions
+
 mod message;
 mod command;
 mod response_codes;

@@ -1,4 +1,4 @@
-//! Module containing everything related to users
+//! User model
 use std::mem;
 
 #[derive(Debug, PartialEq, Copy)]

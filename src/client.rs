@@ -1,4 +1,4 @@
-//! Module containing everything related to high-level client communication
+//! High-level client communication
 use std::ops;
 use std::sync::{Arc, RwLock, RwLockReadGuard, RwLockWriteGuard};
 use std::sync::mpsc::{Sender, channel};
@@ -92,7 +92,7 @@ pub enum MessageOrigin {
 #[derive(Clone)]
 pub struct Client {
     id: ClientId,
-    pub info: Arc<RwLock<User>>,
+    info: Arc<RwLock<User>>,
     hostname: Arc<String>,
     channel: Sender<Event>, 
 }

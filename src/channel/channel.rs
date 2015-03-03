@@ -14,8 +14,9 @@ use user::HostMask;
 use client::{ClientId, Client};
 use client;
 
-pub use self::Event::*;
-pub use super::{Member, Flags, ChannelMode, modes_do};
+use self::Event::*;
+// Note if pub-using this it gives hides member from the docs
+use super::{Member, Flags, ChannelMode, modes_do};
 
 
 /// Forwards the message to a channel
@@ -62,13 +63,13 @@ impl Proxy {
 
 /// Enumeration of events a channel can receive
 // TODO replace with FnOnce
-pub enum Event {
+enum Event {
     Handle(Box<for<'r> Invoke<(&'r Channel)> + Send>),
     HandleMut(Box<for<'r> Invoke<(&'r mut Channel)> + Send>),
 }
 /*
 /// Enumeration of events a channel can receive
-pub enum Event {
+enum Event {
     Handle(Box<FnOnce(&Channel) + Send>),
     HandleMut(Box<FnOnce(&mut Channel) + Send>),
 }
@@ -278,12 +279,12 @@ impl Channel {
         &self.ban_masks
     }
     
-    /// Getter for the ban masks
+    /// Getter for the except masks
     pub fn except_masks(&self) -> &HashSet<HostMask> {
         &self.except_masks
     }
     
-    /// Getter for the ban masks
+    /// Getter for the invite masks
     pub fn invite_masks(&self) -> &HashSet<HostMask> {
         &self.invite_masks
     }
@@ -310,6 +311,7 @@ impl Channel {
         true
     }
     
+    /// Sends a response to a client.
     pub fn send_response(&self, client: &Client, command: ResponseCode, 
                          params: &[&str]) {
         client.send_response(
@@ -317,7 +319,7 @@ impl Channel {
             params,
         )
     }
-    
+
     /// Broadcasts a message to all members
     #[inline]
     pub fn broadcast_raw(&self, msg: Arc<Vec<u8>>) {

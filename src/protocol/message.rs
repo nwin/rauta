@@ -153,7 +153,7 @@ impl fmt::Debug for Message {
     }
 }
 
-/// Iterator over the parameters of the message.
+/// Iterator over the parameters of a message
 pub struct Params<'a> {
     msg: &'a Message,
     i: usize

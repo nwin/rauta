@@ -1,3 +1,5 @@
+//! Low level networking ffi bindings
+
 extern crate libc;
 
 use std::old_io::net::ip::{SocketAddr, Ipv4Addr, Ipv6Addr};
