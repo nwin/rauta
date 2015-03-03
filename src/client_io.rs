@@ -15,13 +15,15 @@ use mio::NonBlock::*;
 use mio;
 
 use protocol::{Message, Command};
-use client::{Client, ClientId};
+use client::{Client, ClientId, MessageOrigin};
 use user::{User, Status};
 use server;
 
 pub enum Event {
     /// New TCP connection has been established
     NewConnection(TcpStream),
+    /// Disconnect client
+    Disconnect(ClientId),
     /// Raw message that should be send to the client as it is.
     Message(ClientId, Vec<u8>),
     /// Shared raw message that should be send to the client as it is.
@@ -87,9 +89,13 @@ impl Worker {
         }
     }
 
-    fn deregister_connection(&mut self, token: Token, event_loop: &mut EventLoop<(), Event>) {
-        let _ = event_loop.deregister(&self.streams[token]);
-        self.streams.remove(&token);
+    fn unregister_connection(&mut self, token: Token, event_loop: &mut EventLoop<(), Event>) {
+        if let Some(stream) = self.streams.remove(&token) {
+            let _ = event_loop.deregister(&stream);
+        } else {
+            return // connection already closed
+        }
+        let _ = self.server_tx.send(server::Event::Disconnected(self.clients[token].clone()));
         self.readers.remove(&token);
         self.clients.remove(&token);
         self.buffers.remove(&token);
@@ -104,27 +110,38 @@ impl Handler<(), Event> for Worker {
                 // If it didn’t work the client closed the connection, never mind.
                 let _ = self.register_connection(stream, event_loop);
             },
+            Disconnect(id) => {
+                self.unregister_connection(id.token(), event_loop);
+            },
             Shutdown => {
                 event_loop.shutdown()
             },
             Message(id, vec) => {
                 debug!(" sending message {}", String::from_utf8_lossy(vec.as_slice()));
-                self.buffers[id.token()].push_back(Cursor::new(vec));
-                self.writable(event_loop, id.token())
+                if self.buffers.contains_key(&id.token()) {
+                    self.buffers[id.token()].push_back(Cursor::new(vec));
+                    self.writable(event_loop, id.token())
+                }
             },
             SharedMessage(id, vec) => {
                 debug!(" sending message {}", String::from_utf8_lossy(vec.as_slice()));
                 // TODO do not clone, Cursor should also work for soon
-                self.buffers[id.token()].push_back(Cursor::new((*vec).clone()));
-                self.writable(event_loop, id.token())
+                if self.buffers.contains_key(&id.token()) {
+                    self.buffers[id.token()].push_back(Cursor::new((*vec).clone()));
+                    self.writable(event_loop, id.token())
+                }
             }
         }
     }
     fn readable(&mut self, event_loop: &mut EventLoop<(), Event>, token: Token, hint: mio::ReadHint) {
         use protocol::Command::*;
         if hint.is_error() || hint.is_hup() {
-            self.deregister_connection(token, event_loop)
-            // TODO broadcast QUIT
+            if let Some(client) = self.clients.get(&token) {
+                // The quit message will trigger a disconnect event
+                let _ = self.server_tx.send(server::Event::InboundMessage(client.id(), Message::new(client.build_msg(
+                    QUIT, &[b"Client hung up"], MessageOrigin::User
+                )).unwrap()));
+            }
         } else {
             if let Some(stream) = self.streams.get_mut(&token) {
                 let reader = &mut self.readers[token];

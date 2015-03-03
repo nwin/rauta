@@ -30,6 +30,7 @@ pub struct Server {
 
 pub enum Event {
     Connected(Client),
+    Disconnected(Client),
     InboundMessage(ClientId, Message)
 }
 
@@ -152,6 +153,10 @@ impl Handler<(), Event> for Server {
             Connected(client) => {
                 let id = client.id();
                 self.clients.insert(id, client);
+            }
+            Disconnected(client) => {
+                self.clients.remove(&client.id());
+                self.nicks.remove(&*client.nick());
             }
         }
     }

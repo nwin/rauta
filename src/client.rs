@@ -15,15 +15,6 @@ use user::{User, Status};
 use protocol::Message;
 use protocol::{Command, ResponseCode};
 
-/// Events a client can receive
-#[derive(Debug)]
-pub enum Event {
-    /// Raw message that should be send to the client as it is.
-    Message(Vec<u8>),
-    /// Shared raw message that should be send to the client as it is.
-    SharedMessage(Arc<Vec<u8>>)
-}
-
 #[derive(Hash, Copy, PartialEq, Eq, Clone, Debug)]
 pub struct ClientId {
     id: [u64; 2]

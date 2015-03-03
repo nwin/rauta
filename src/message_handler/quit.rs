@@ -2,6 +2,7 @@ use std::sync::Arc;
 
 use protocol::{Command, ResponseCode, Message};
 use client::{Client, MessageOrigin};
+use client_io::Event;
 use server::Server;
 
 use super::{MessageHandler, ErrorMessage};
@@ -37,6 +38,7 @@ impl MessageHandler for Handler {
                 }
             })
         }
+        client.send(Event::Disconnect(client.id()))
     }
 }
 
