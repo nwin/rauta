@@ -7,7 +7,7 @@ use misc;
 
 use super::{MessageHandler, ErrorMessage};
 
-/// Handler for NAMES command
+/// Handler for NAMES message
 ///
 /// `NAMES [ <channel> *( "," <channel> ) [ <target> ] ]`
 #[derive(Debug)]

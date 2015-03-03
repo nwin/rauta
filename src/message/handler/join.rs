@@ -12,7 +12,9 @@ use misc;
 
 use super::{MessageHandler, ErrorMessage};
 
-/// Handler for JOIN command
+/// Handler for JOIN message
+///
+/// `JOIN <channel>{,<channel>} [<key>{,<key>}]`
 #[derive(Debug)]
 pub struct Handler {
     msg: Message,
@@ -21,6 +23,7 @@ pub struct Handler {
 
 impl MessageHandler for Handler {
     fn from_message(message: Message) -> Result<Handler, (ResponseCode, ErrorMessage)> {
+        // TODO filter out reserved names like "*"
         let mut destinations = Vec::new();
         {
             let mut params = message.params();

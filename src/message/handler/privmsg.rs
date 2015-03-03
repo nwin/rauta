@@ -11,7 +11,7 @@ use misc;
 
 use super::{MessageHandler, ErrorMessage};
 
-/// Handler for PRIVMSG command
+/// Handler for PRIVMSG message
 ///
 /// `PRIVMSG <msgtarget> <text to be sent>`
 #[derive(Debug)]

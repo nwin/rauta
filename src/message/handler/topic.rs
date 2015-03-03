@@ -11,7 +11,7 @@ use misc;
 
 use super::{MessageHandler, ErrorMessage};
 
-/// Handler for TOPIC command
+/// Handler for TOPIC message
 ///
 /// `TOPIC <channel> [ <topic> ]`
 #[derive(Debug)]

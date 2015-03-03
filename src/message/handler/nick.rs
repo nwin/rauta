@@ -6,11 +6,13 @@ use protocol::ResponseCode::*;
 use client::Client;
 use server::Server;
 use user;
+use misc;
 
 use super::{MessageHandler, ErrorMessage};
 
-/// Handler for NICK command.
-/// NICK nickname
+/// Handler for NICK message
+///
+/// `NICK nickname
 #[derive(Debug)]
 pub struct Handler {
     msg: Message
@@ -29,7 +31,7 @@ impl MessageHandler for Handler {
                             "Erroneous nickname. Nickname has to be valid utf-8"
                         )
                     ))
-                } else if nick == b"*" {
+                } else if misc::is_reserved_nick(nick) {
                     return Err((
                         ERR_ERRONEUSNICKNAME,
                         ErrorMessage::WithSubject(
@@ -50,7 +52,7 @@ impl MessageHandler for Handler {
         use user::Status::*;
         let nick = self.nick();
         // Note RFC issue #690, string has to be cloned twice now…
-        // TODO: handle renames delete old entries…
+        // TODO: handle renames delete old entries and convert to lower case first
         match server.nicks_mut().entry(nick.to_string()) {
             // Unsafe reborrows because of Rust issue #6393
             Occupied(_) => unsafe {(&*(server as *mut Server))}.send_response(

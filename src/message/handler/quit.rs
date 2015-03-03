@@ -6,7 +6,8 @@ use server::Server;
 
 use super::{MessageHandler, ErrorMessage};
 
-/// Handler for NICK command.
+/// Handler for NICK message
+///
 /// `NICK nickname`
 #[derive(Debug, Clone)]
 pub struct Handler {

@@ -10,7 +10,7 @@ use misc;
 
 use super::{MessageHandler, ErrorMessage};
 
-/// Handler for PART command
+/// Handler for PART message
 ///
 /// `PART <channel> *( "," <channel> ) [ <Part Message> ]`
 #[derive(Debug)]

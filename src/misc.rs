@@ -73,6 +73,18 @@ pub fn verify_receiver<'a>(recv: &'a [u8]) -> Option<Receiver> {
     }
 }
 
+/// Checks if a nick is reserved
+pub fn is_reserved_nick(nick: &[u8]) -> bool {
+    // TODO convert to lover case first!
+    match nick {
+        b"*" => true,
+        b"NickServ" => true,
+        b"ChanServ" => true,
+        b"anonymous" => true,
+        _ => false
+    }
+}
+
 #[cfg(test)]
 mod tests {
 	use super::{valid_nick, valid_channel};

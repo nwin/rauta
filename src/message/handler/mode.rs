@@ -13,7 +13,9 @@ use misc;
 
 use super::{MessageHandler, ErrorMessage};
 
-/// Handler for MODE command
+/// Handler for MODE message
+///
+/// `MODE <channel> {[+|-]|o|p|s|i|t|n|b|v} [<limit>] [<user>] [<ban mask>]`
 #[derive(Debug)]
 pub struct Handler {
     msg: Message,

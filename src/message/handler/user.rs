@@ -5,7 +5,9 @@ use server::Server;
 use super::{MessageHandler, ErrorMessage};
 use user;
 
-/// Handler for USER command
+/// Handler for USER message
+///
+/// `USER <username> <hostname> <servername> <realname>`
 #[derive(Debug)]
 pub struct Handler {
     msg: Message,
