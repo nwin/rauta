@@ -192,19 +192,7 @@ impl Handler<(), Event> for Worker {
         }
     }
 }
-/*
-impl Default for Worker {
-    fn default() -> Worker {
-        Worker {
-            tokens: HashMap::new(),
-            streams: HashMap::new(),
-            readers: HashMap::new(),
-            counter: 0,
 
-        }
-    }
-}
-*/
 #[derive(Debug)]
 enum MessageError {
     TooLong,
