@@ -1,33 +1,41 @@
 //! Multi-threaded io loop
-use std::collections::HashMap;
+use std::collections::{VecDeque, HashMap};
 use std::error::FromError;
+use std::io::Cursor;
 use std::io;
 use std::mem;
-use std::sync::Arc;
+use std::sync::{RwLock, Arc};
 use std::sync::mpsc::Sender;
 use std::default::Default;
 
-use mio::{EventLoop, Handler, Token, TryRead};
+use mio::{EventLoop, Handler, Token, TryRead, TryWrite};
 use mio::net::tcp::TcpStream;
 use mio::buf::{RingBuf, MutBuf, Buf};
+use mio::NonBlock::*;
 use mio;
 
-use client::ClientId;
+use protocol::{Message, Command};
+use client::{Client, ClientId};
+use user::{User, Status};
 use server;
 
-use self::Event::*;
-
 pub enum Event {
+    /// New TCP connection has been established
     NewConnection(TcpStream),
+    /// Raw message that should be send to the client as it is.
+    Message(ClientId, Vec<u8>),
+    /// Shared raw message that should be send to the client as it is.
+    SharedMessage(ClientId, Arc<Vec<u8>>),
+    /// Shut down the event loop
     Shutdown
 }
 
 /// Worker thread
 pub struct Worker {
-    tokens: HashMap<Token, ClientId>, 
-    streams: HashMap<ClientId, TcpStream>,
-    readers: HashMap<ClientId, MessageReader>,
-    counter: usize,
+    streams: HashMap<Token, TcpStream>,
+    clients: HashMap<Token, Client>,
+    readers: HashMap<Token, MessageReader>,
+    buffers: HashMap<Token, VecDeque<Cursor<Vec<u8>>>>,
     server_tx: Sender<server::Event>,
     host: Arc<String>
 
@@ -37,31 +45,36 @@ impl Worker {
 
     pub fn new(tx: Sender<server::Event>, host: Arc<String>) -> Worker {
         Worker {
-            tokens: HashMap::new(),
             streams: HashMap::new(),
+            clients: HashMap::new(),
             readers: HashMap::new(),
-            counter: 0,
+            buffers: HashMap::new(),
             server_tx: tx,
             host: host
-
         }
     }
 
     /// Registers a new connection
     fn register_connection(&mut self, mut stream: TcpStream, 
-                           event_loop: &mut EventLoop<(), Event>) -> io::Result<()>
+                           event_loop: &mut EventLoop<(), Event>) -> io::Result<ClientId>
     {
         let id = try!(ClientId::new_mio(&stream));
-        self.counter += 1;
-        let token = Token(self.counter);
-        self.tokens.insert(token, id.clone());
+        let client_hostname = ::net::get_nameinfo_mio(try!(stream.peer_addr()));
+        let client = Client {
+            id: id,
+            info: Arc::new(RwLock::new(User::new(client_hostname))),
+            hostname: self.host.clone(),
+            channel: event_loop.channel()
+        };
+        let token = id.token();
         if let Ok(()) = event_loop.register(&mut stream, token) {
-            self.streams.insert(id, stream);
-            self.readers.insert(id, Default::default());
-            Ok(())
+            self.streams.insert(token, stream);
+            //self.clients.insert(token, client);
+            self.readers.insert(token, Default::default());
+            self.buffers.insert(token, VecDeque::new());
+            let _ = self.server_tx.send(server::Event::Connected(client));
+            Ok(id)
         } else {
-            self.counter -= 1;
-            self.tokens.remove(&token);
             Err(io::Error::new(
                 io::ErrorKind::Other,
                 "Failed to register stream in event loop.",
@@ -71,16 +84,17 @@ impl Worker {
     }
 
     fn deregister_connection(&mut self, token: Token, event_loop: &mut EventLoop<(), Event>) {
-        let id = self.tokens[token];
-        let _ = event_loop.deregister(&self.streams[id]);
-        self.streams.remove(&id);
-        self.readers.remove(&id);
-        self.tokens.remove(&token);
+        let _ = event_loop.deregister(&self.streams[token]);
+        self.streams.remove(&token);
+        self.readers.remove(&token);
+        self.clients.remove(&token);
+        self.buffers.remove(&token);
     }
 }
 
 impl Handler<(), Event> for Worker {
     fn notify(&mut self, event_loop: &mut EventLoop<(), Event>, msg: Event) {
+        use self::Event::*;
         match msg {
             NewConnection(stream) => {
                 // If it didn’t work the client closed the connection, never mind.
@@ -88,25 +102,85 @@ impl Handler<(), Event> for Worker {
             },
             Shutdown => {
                 event_loop.shutdown()
+            },
+            Message(id, vec) => {
+                debug!(" sending message {}", String::from_utf8_lossy(vec.as_slice()));
+                self.buffers[id.token()].push_back(Cursor::new(vec))
+            },
+            SharedMessage(id, vec) => {
+                debug!(" sending message {}", String::from_utf8_lossy(vec.as_slice()));
+                // TODO do not clone, Cursor should also work for soon
+                self.buffers[id.token()].push_back(Cursor::new((*vec).clone()))
             }
         }
     }
     fn readable(&mut self, event_loop: &mut EventLoop<(), Event>, token: Token, hint: mio::ReadHint) {
+        use protocol::Command::*;
         if hint.is_error() || hint.is_hup() {
             self.deregister_connection(token, event_loop)
             // TODO broadcast QUIT
         } else {
-            if let Some(&id) = self.tokens.get(&token) {
-                let reader = &mut self.readers[id];
-                let stream = &mut self.streams[id];
+            if let Some(stream) = self.streams.get_mut(&token) {
+                let reader = &mut self.readers[token];
+                let client = &self.clients[token];
                 match reader.feed(stream) {
                     Ok(messages) => for message in messages {
-                        match message {
-                            Ok(msg) => println!("{}", String::from_utf8_lossy(&*msg)),
+                        match message.map(|m| Message::new(m)) {
+                            Ok(Ok(msg)) => {
+                                println!("received message {:?}", String::from_utf8_lossy(&*msg));
+                                let cmd = Command::from_message(&msg);
+                                if client.info().status() != Status::Registered {
+                                    match cmd {
+                                        Some(CAP) | Some(NICK) | Some(USER) | Some(QUIT) => (),
+                                        Some(cmd) => {
+                                            // User is not registered, ignore other messages for now
+                                            debug!("User not yet registered ignored {} message.", cmd);
+                                            continue
+                                        }
+                                        _ => ()
+                                    }
+                                }
+                                if let Err(_) = self.server_tx.send(server::Event::InboundMessage(client.id(), msg)) {
+                                    // Server thread crashed, quitting client thread
+                                    event_loop.shutdown()
+                                }
+                                if cmd.map_or(false, |c| c == QUIT) {
+                                    // Closing connection
+                                    //self.deregister_connection(token, event_loop)
+                                }
+                            },
+                            Ok(Err(err)) => debug!("{:?}", err),
                             Err(err) => debug!("{:?}", err)
                         }
                     },
                     Err(err) => debug!("{:?}", err)
+                }
+            }
+        }
+    }
+    fn writable(&mut self, _: &mut EventLoop<(), Event>, token: Token) {
+        if let Some(stream) = self.streams.get_mut(&token) {
+            let buffers = &mut self.buffers[token];
+            while buffers.len() > 0 {
+                let mut drop_front = false;
+                {
+                    let buffer = &mut buffers[0];
+                    let max_pos = buffer.get_ref().len() as u64 - 1;
+                    match stream.write_slice(&*buffer.get_ref()) {
+                        Ok(WouldBlock) => break,
+                        Ok(Ready(bytes)) => {
+                            let new_pos = buffer.position() + bytes as u64;
+                            if new_pos == max_pos {
+                                drop_front = true;
+                            } else {
+                                buffer.set_position(new_pos)
+                            }
+                        },
+                        Err(_) => {}
+                    }
+                }
+                if drop_front {
+                    let _ = buffers.remove(0);
                 }
             }
         }

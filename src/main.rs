@@ -39,5 +39,7 @@ mod test;
 fn main() {
     env_logger::init().unwrap();
 
-    let _ = server::Server::new("localhost").map(|s| s.serve_forever()).unwrap();
+    let server = box server::Server::new("localhost");
+
+    let _ = server.map(|mut s| s.run_mio()).unwrap();
 }

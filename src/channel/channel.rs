@@ -13,6 +13,7 @@ use protocol::ResponseCode;
 use user::HostMask;
 use client::{ClientId, Client};
 use client;
+use client_io;
 
 use self::Event::*;
 // Note if pub-using this it gives hides member from the docs
@@ -324,7 +325,7 @@ impl Channel {
     #[inline]
     pub fn broadcast_raw(&self, msg: Arc<Vec<u8>>) {
         for member in self.members() {
-            member.send(client::Event::SharedMessage(msg.clone()))
+            member.send(client_io::Event::SharedMessage(member.id(), msg.clone()))
         }
     }
 

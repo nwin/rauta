@@ -5,6 +5,7 @@ use protocol::ResponseCode::*;
 use protocol::Command::PRIVMSG;
 use client::{Client, MessageOrigin};
 use client;
+use client_io;
 use server::Server;
 use misc::Receiver;
 use misc;
@@ -61,7 +62,7 @@ impl MessageHandler for Handler {
                                     }
                                     for member in channel.members() {
                                         if member != sender {
-                                            member.send(client::Event::SharedMessage(msg.clone()))
+                                            member.send(client_io::Event::SharedMessage(member.id(), msg.clone()))
                                         }
                                     }
                                 },
@@ -73,7 +74,7 @@ impl MessageHandler for Handler {
                             match maybe_member {
                                 Some(sender) => for member in channel.members() {
                                     if member != sender {
-                                        member.send(client::Event::SharedMessage(msg.clone()))
+                                        member.send(client_io::Event::SharedMessage(member.id(), msg.clone()))
                                     }
                                 },
                                 None => channel.broadcast_raw(msg)

@@ -1,5 +1,6 @@
 use std::collections::{HashSet};
 
+use client_io;
 use client;
 use client::{ClientId, Client, MessageOrigin};
 use user::HostMask;
@@ -59,7 +60,7 @@ impl Member {
     }
 
     /// Sends a message to the client
-    pub fn send(&self, event: client::Event) {
+    pub fn send(&self, event: client_io::Event) {
         self.client.send(event)
     }
     

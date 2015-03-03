@@ -66,6 +66,7 @@ impl Server {
         use self::Event::{Connected, InboundMessage};
         // todo change this to a more general event dispatching loop
         // this is broken now, transition to mio
+        try!(self.listen());
         let rx = self.rx;
         let (_, rx1) = channel();
         self.rx = rx1;
@@ -86,11 +87,11 @@ impl Server {
         Ok(self)
     }
 
-    fn run_mio(&mut self) -> io::Result<()>  {
+    pub fn run_mio(&mut self) -> io::Result<()>  {
         let port = try!(mio::net::tcp::TcpListener::bind(&*format!("{}:{}", self.ip, self.port)));
         info!("started listening on {}:{} ({})", self.ip, self.port, self.host);
-        let mut server_loop = try!(EventLoop::new());
-        let mut client_loop = try!(EventLoop::new());
+        let mut server_loop = box try!(EventLoop::new());
+        let mut client_loop = box try!(EventLoop::new());
         try!(server_loop.register(&port, Token(self.port as usize)));
         let host = Arc::new(self.host.clone());
         let tx = self.tx.clone();
