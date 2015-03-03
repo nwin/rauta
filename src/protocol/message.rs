@@ -3,7 +3,7 @@ use std::ascii::AsciiExt;
 use std::fmt;
 use std::ops;
 
-/// An irc message
+/// An IRC message
 #[derive(Clone)]
 pub struct Message {
     message: Vec<u8>,
