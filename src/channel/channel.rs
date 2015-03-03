@@ -7,6 +7,7 @@ use std::sync::Arc;
 use std::thread::spawn;
 use std::thunk::Invoke;
 
+use mio::EventLoopSender;
 
 use server;
 use protocol::ResponseCode;
@@ -24,13 +25,13 @@ use super::{Member, Flags, ChannelMode, modes_do};
 pub struct Proxy {
     name: String,
     tx: Sender<Event>,
-    server_tx: Sender<server::Event>
+    server_tx: EventLoopSender<server::Event>
 }
 
 impl Proxy {
     fn new(name: String,
            tx: Sender<Event>, 
-           server_tx: Sender<server::Event>) -> Proxy {
+           server_tx: EventLoopSender<server::Event>) -> Proxy {
         Proxy {
             name: name,
             tx: tx,
@@ -115,7 +116,7 @@ impl Channel {
     }
     
     /// Starts listening for events in a separate thread
-    pub fn listen(self, server_tx: Sender<server::Event>) -> Proxy {
+    pub fn listen(self, server_tx: EventLoopSender<server::Event>) -> Proxy {
         let (tx, rx) = channel();
         let name = self.name.clone();
         spawn(move || {

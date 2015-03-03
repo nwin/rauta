@@ -58,14 +58,14 @@ impl Worker {
     fn register_connection(&mut self, mut stream: TcpStream, 
                            event_loop: &mut EventLoop<(), Event>) -> io::Result<ClientId>
     {
-        let id = try!(ClientId::new_mio(&stream));
+        let id = try!(ClientId::new(&stream));
         let client_hostname = ::net::get_nameinfo_mio(try!(stream.peer_addr()));
-        let client = Client {
-            id: id,
-            info: Arc::new(RwLock::new(User::new(client_hostname))),
-            hostname: self.host.clone(),
-            channel: event_loop.channel()
-        };
+        let client = Client::new(
+            id,
+            User::new(client_hostname),
+            event_loop.channel(),
+            self.host.clone(),
+        );
         let token = id.token();
         if let Ok(()) = event_loop.register(&mut stream, token) {
             self.streams.insert(token, stream);

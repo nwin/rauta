@@ -2,11 +2,6 @@
 use std::ops;
 use std::sync::{Arc, RwLock, RwLockReadGuard, RwLockWriteGuard};
 use std::sync::mpsc::{Sender, channel};
-use std::old_io;
-use std::old_io::{BufferedReader};
-use std::old_io::{BufferedWriter};
-use std::old_io::net::tcp::TcpStream;
-use std::old_io::net::ip::IpAddr;
 use std::thread::spawn;
 use mio;
 use std::io;
@@ -37,24 +32,7 @@ pub struct ClientId {
 impl ClientId {
     /// The client id is losely inspired by SILC but the silc
     /// method of also using the nickname for this is not applicable to IRC
-    fn new(stream: &mut TcpStream) -> ClientId {
-        ClientId { 
-            id: [
-                (match stream.socket_name().unwrap().ip {
-                    IpAddr::Ipv4Addr(a, b, c, d) => (a as u32) <<24 | (b as u32)<<16 | (c as u32)<<8 | d as u32,
-                    IpAddr::Ipv6Addr(_, _, _, _, _, _, a, b) => (a as u32) << 16 | b as u32 
-                } as u64) << 32
-                | match stream.peer_name().unwrap().ip {
-                    IpAddr::Ipv4Addr(a, b, c, d) => (a as u32) <<24 | (b as u32) <<16 | (c as u32) <<8 | d as u32,
-                    IpAddr::Ipv6Addr(_, _, _, _, _, _, a, b) => (a as u32)  << 16 | b as u32  
-                } as u64, 
-                rand::random()
-            ]
-        }
-    }
-    /// The client id is losely inspired by SILC but the silc
-    /// method of also using the nickname for this is not applicable to IRC
-    pub fn new_mio(stream: &mio::net::tcp::TcpStream) -> io::Result<ClientId> {
+    pub fn new(stream: &mio::net::tcp::TcpStream) -> io::Result<ClientId> {
         Ok(ClientId { 
             id: [
                 (match try!(stream.socket_addr()).ip() {
@@ -96,16 +74,21 @@ pub enum MessageOrigin {
 /// Struct for client communication
 #[derive(Clone)]
 pub struct Client {
-    pub id: ClientId,
-    pub info: Arc<RwLock<User>>,
-    pub hostname: Arc<String>,
-    pub channel: mio::EventLoopSender<client_io::Event>, 
+    id: ClientId,
+    info: Arc<RwLock<User>>,
+    hostname: Arc<String>,
+    channel: mio::EventLoopSender<client_io::Event>, 
 }
 
 impl Client {
     /// Initialized client communication
-    pub fn listen(mut stream: TcpStream, server_tx: Sender<server::Event>, hostname: Arc<String>) -> old_io::IoResult<()> {
-        Ok(())
+    pub fn new(id: ClientId, user: User, tx: mio::EventLoopSender<client_io::Event>, hostname: Arc<String>) -> Client {
+        Client {
+            id: id,
+            info: Arc::new(RwLock::new(user)),
+            hostname: hostname,
+            channel: tx
+        }
     }
 
     fn push_tail(&self, mut msg: Vec<u8>, payload: &[&[u8]]) -> Vec<u8> {

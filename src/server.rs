@@ -1,14 +1,14 @@
 //! Server model
 
 use std::io;
-use std::old_io;
-use std::old_io::net;
-use std::old_io::{Acceptor, Listener, IoResult};
-use std::old_io::net::tcp::{TcpListener};
+use std::net;
 use std::sync::Arc;
 use std::sync::mpsc::{Sender, Receiver, channel};
 use std::thread::spawn;
 use std::collections::HashMap;
+
+use mio::{EventLoopSender, EventLoop, Handler, Token};
+use mio;
 
 use protocol::{Command, ResponseCode, Message};
 use client::{ClientId, Client, MessageOrigin};
@@ -23,10 +23,9 @@ pub struct Server {
     clients: HashMap<ClientId, Client>,
     nicks: HashMap<String, ClientId>,
     channels: HashMap<String, channel::Proxy>,
-    tx: Sender<Event>,
-    rx: Receiver<Event>,
     listener: Option<mio::net::tcp::TcpListener>,
-    client_tx: Option<mio::EventLoopSender<client_io::Event>>
+    server_tx: Option<EventLoopSender<Event>>,
+    client_tx: Option<EventLoopSender<client_io::Event>>,
 }
 
 pub enum Event {
@@ -37,21 +36,19 @@ pub enum Event {
 /// Irc server
 impl Server {
     /// Creates a new IRC server instance.
-    pub fn new(host: &str) -> IoResult<Server> {
-        let addresses = try!(net::get_host_addresses(host));
-        debug!("IP addresses found (for {:?}): {:?}", host, addresses);
+    pub fn new(host: &str) -> io::Result<Server> {
+        let addresses = try!(net::lookup_host(host));
         // Listen only on ipv4 for now…
-        let ip = match addresses.iter().filter(
-            |&v| match v { &net::ip::Ipv4Addr(_, _, _, _) => true, _ => false }
+        let ip = match addresses.filter_map(|v| v.ok()).filter(
+            |&v| match v.ip() { net::IpAddr::V4(_) => true, _ => false }
         ).nth(0) {
             Some(ip) => ip,
-            None => return Err(old_io::IoError {
-                kind: old_io::OtherIoError,
-                desc: "Cannot get host IP address.",
-                detail: None
-            })
+            None => return Err(io::Error::new(
+                io::ErrorKind::Other,
+                "Cannot get host IP address.",
+                None
+            ))
         };
-        let (tx, rx) = channel();
         Ok(Server {
             host: host.to_string(),
             ip: format!("{}", ip),
@@ -59,37 +56,10 @@ impl Server {
             clients: HashMap::new(),
             nicks: HashMap::new(),
             channels: HashMap::new(),
-            tx: tx,
-            rx: rx,
             listener: None,
+            server_tx: None,
             client_tx: None
         })
-    }
-    
-    /// Starts the main loop and listens on the specified host and port.
-    pub fn serve_forever(mut self) -> IoResult<Server> {
-        use self::Event::{Connected, InboundMessage};
-        // todo change this to a more general event dispatching loop
-        // this is broken now, transition to mio
-        try!(self.listen());
-        let rx = self.rx;
-        let (_, rx1) = channel();
-        self.rx = rx1;
-        for event in rx.iter() {
-            match event {
-                InboundMessage(id, msg) => {
-                    if let Some(client) = self.clients.get(&id).map(|c| c.clone()) {
-                        message_handler::invoke(msg, &mut self, client)
-                    }
-                    
-                }
-                Connected(client) => {
-                    let id = client.id();
-                    self.clients.insert(id, client);
-                }
-            }
-        }
-        Ok(self)
     }
 
     pub fn run_mio(&mut self) -> io::Result<()>  {
@@ -97,6 +67,7 @@ impl Server {
         info!("started listening on {}:{} ({})", self.ip, self.port, self.host);
         let mut server_loop = box try!(EventLoop::new());
         let mut client_loop = box try!(EventLoop::new());
+        self.server_tx = Some(server_loop.channel());
         self.client_tx = Some(client_loop.channel());
         try!(server_loop.register(self.listener.as_ref().unwrap(), Token(self.port as usize)));
         let host = Arc::new(self.host.clone());
@@ -106,26 +77,6 @@ impl Server {
             let _ = client_loop.run(&mut Worker::new(tx, host)).unwrap();
         });
         server_loop.run(self)
-    }
-
-    fn listen(&self) -> IoResult<()>  {
-        let listener = TcpListener::bind((&*self.ip, self.port));
-        info!("started listening on {}:{} ({})", self.host, self.port, self.ip);
-        let mut acceptor = try!(listener.listen());
-        let tx = self.tx.clone();
-        let host = Arc::new(self.host.clone());
-        spawn(move || {
-            for maybe_stream in acceptor.incoming() {
-                match maybe_stream {
-                    Err(err) => { error!("{}", err) }
-                    Ok(stream) =>  match Client::listen(stream, tx.clone(), host.clone()) {
-                        Ok(()) => {},
-                        Err(err) => error!("{}", err)
-                    }
-                }
-            }
-        });
-        Ok(())
     }
 
     /// Sends a response to the client
@@ -183,13 +134,10 @@ impl Server {
 
     /// Getter for tx for sending to main event loop
     /// Panics if the main loop is not started
-    pub fn tx(&mut self) ->  &Sender<Event> {
-        &self.tx
+    pub fn tx(&mut self) ->  &EventLoopSender<Event> {
+        self.server_tx.as_ref().unwrap()
     }
 }
-
-use mio::{EventLoop, Handler, Token};
-use mio;
 
 impl Handler<(), Event> for Server {
     fn notify(&mut self, _: &mut EventLoop<(), Event>, msg: Event) {
@@ -207,7 +155,7 @@ impl Handler<(), Event> for Server {
             }
         }
     }
-    fn readable(&mut self, event_loop: &mut EventLoop<(), Event>, token: Token, hint: mio::ReadHint) {
+    fn readable(&mut self, _: &mut EventLoop<(), Event>, _: Token, _: mio::ReadHint) {
         if let Ok((stream, _)) = self.listener.as_ref().unwrap().accept() {
             let _ = self.client_tx.as_ref().unwrap().send(client_io::Event::NewConnection(stream));
         } 
