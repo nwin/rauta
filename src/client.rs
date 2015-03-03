@@ -262,8 +262,8 @@ impl Client {
     }
 
     /// Getter for user name
-    pub fn nick(&self) -> FragmentReadGuard<User, str> {
-        FragmentReadGuard::new(self.info(), |g| g.nick())
+    pub fn nick(&self) -> ReadGuard<User, str> {
+        ReadGuard::new(self.info(), |info| info.nick())
     }
 
     /// Getter for server name
@@ -281,34 +281,35 @@ macro_rules! guard {
     }
 }
 
-/// A wrapped RwLockReadGuard that only allows access to a part of the guarded
-/// struct
-pub struct FragmentReadGuard<'a, T: 'a, R: ?Sized + 'a> {
+/// Wraps a RwLockReadGuard
+///
+/// Allows to expose only a part of the guarded struct.
+pub struct ReadGuard<'a, T: 'a, R: ?Sized + 'a> {
     guard: RwLockReadGuard<'a, T>,
     ptr: &'a R
 }
 
-impl<'a, T, R: ?Sized> FragmentReadGuard<'a, T, R> {
+impl<'a, T, R: ?Sized> ReadGuard<'a, T, R> {
     #[inline]
-    fn new<F>(guard: RwLockReadGuard<'a, T>, get_fragment: F)
-             -> FragmentReadGuard<'a, T, R>
+    fn new<F>(guard: RwLockReadGuard<'a, T>, do_expose: F)
+             -> ReadGuard<'a, T, R>
              where F: Fn(&'a RwLockReadGuard<'a, T>) -> &'a R
     {
 
         // This works because ptr is not a reference into the guard
         // but into the guarded object. Thus moving the guard does not
         // invalidate the pointer.
-        let ptr = get_fragment(
+        let ptr = do_expose(
             unsafe{ &*(&guard as *const RwLockReadGuard<'a, T>) }
         );
-        FragmentReadGuard {
+        ReadGuard {
             guard: guard,
             ptr: ptr,
         }
     }
 }
 
-impl<'a, T, R: ?Sized> ops::Deref for FragmentReadGuard<'a, T, R> {
+impl<'a, T, R: ?Sized> ops::Deref for ReadGuard<'a, T, R> {
     type Target = R;
     fn deref(&self) -> &R {
         self.ptr
