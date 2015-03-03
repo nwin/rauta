@@ -93,7 +93,10 @@ impl Message {
         for param in middle {
             let slice = start..start + param.len();
             start = slice.end + 1;
-            self.params.push(slice)
+            // Push only if no trailing whitespace
+            if slice.start != slice.end {
+                self.params.push(slice)
+            }
         }
         if let Some(suffix) = trailing {
             self.params.push(suffix)
