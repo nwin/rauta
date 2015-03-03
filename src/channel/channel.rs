@@ -49,7 +49,7 @@ impl Proxy {
     }
 
     /// Sends an event to the channel
-    pub fn send(&self, event: Event) {
+    fn send(&self, event: Event) {
         match self.tx.send(event) {
             Ok(_) => {},
             Err(_) => {
