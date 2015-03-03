@@ -55,7 +55,7 @@ impl MessageHandler for Handler {
                         Some(msg) => client.build_msg(PRIVMSG, &[name.as_bytes(), msg], MessageOrigin::User),
                         None => client.build_msg(PRIVMSG, &[name.as_bytes()], MessageOrigin::User),
                     });
-                    channel.send(Event::Handle(box move |channel: &Channel| {
+                    channel.with_ref(move |channel| {
                         use channel::ChannelMode::*;
                         let maybe_member = channel.member_with_id(client.id());
                         if channel.has_flag(MemberOnly) || channel.has_flag(Moderated) {
@@ -84,7 +84,7 @@ impl MessageHandler for Handler {
                                 None => channel.broadcast_raw(msg)
                             }
                         }
-                    }))
+                    })
                 },
                 None => client.send_response(
                     ERR_NOSUCHNICK,

@@ -54,9 +54,9 @@ impl MessageHandler for Handler {
         let msg = self.msg;
         match self.recv {
             Receiver::Channel(ref name) => match server.channels().get(name) {
-                Some(channel) => channel.send(Event::HandleMut(box move |channel: &mut Channel| {
+                Some(channel) => channel.with_ref_mut(move |channel| {
                     handle_mode(channel, client, msg)
-                })),
+                }),
                 None => client.send_response(
                     ERR_NOSUCHCHANNEL,
                     &[name.as_slice(), "No such channel"]

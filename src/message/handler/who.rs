@@ -50,9 +50,9 @@ impl MessageHandler for Handler {
         match server.channels().get(&*String::from_utf8_lossy(self.mask())) {
             Some(channel) => {
                 let op_only = self.op_only;
-                channel.send(Event::Handle(box move |channel: &Channel| {
+                channel.with_ref(move |channel| {
                     handle_who(channel, client, op_only)
-                }))
+                })
             },
             None => {} // handle later
         }

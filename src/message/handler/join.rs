@@ -73,11 +73,9 @@ impl MessageHandler for Handler {
                     channel.add_flag(MemberOnly);
                     entry.insert(channel.listen(tx.clone()))
                 }
-            }.send(
-                Event::HandleMut(box move |channel: &mut Channel| {
-                    handle_join(channel, member, password)
-                })
-            )
+            }.with_ref_mut(move |channel| {
+                handle_join(channel, member, password)
+            })
         }
     }
 }

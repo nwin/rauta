@@ -30,12 +30,12 @@ impl MessageHandler for Handler {
         for (_, proxy) in server.channels().iter() {
             let msg = msg.clone();
             let id = client.id();
-            proxy.send(channel::Event::HandleMut(box move |channel: &mut channel::Channel | {
+            proxy.with_ref_mut(move |channel| {
                 if let Some(_) = channel.member_with_id(id) {
                     channel.broadcast_raw(msg);
                     channel.remove_member(&id);
                 }
-            }))
+            })
         }
     }
 }

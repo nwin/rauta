@@ -46,9 +46,7 @@ impl MessageHandler for Handler {
     	for chan_name in self.destinations() {
     		if let Some(channel) = server.channels().get(chan_name) {
     			let client = client.clone();
-    			channel.send(Event::Handle(
-    				box move |channel: &Channel| channel.send_names(&client)
-    			))
+    			channel.with_ref(move |channel| channel.send_names(&client))
     		}
     	}
     }
