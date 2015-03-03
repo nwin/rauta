@@ -8,7 +8,7 @@ use std::sync::{RwLock, Arc};
 use std::sync::mpsc::Sender;
 use std::default::Default;
 
-use mio::{EventLoop, Handler, Token, TryRead, TryWrite};
+use mio::{EventLoop, EventLoopSender, Handler, Token, TryRead, TryWrite};
 use mio::net::tcp::TcpStream;
 use mio::buf::{RingBuf, MutBuf, Buf};
 use mio::NonBlock::*;
@@ -36,14 +36,14 @@ pub struct Worker {
     clients: HashMap<Token, Client>,
     readers: HashMap<Token, MessageReader>,
     buffers: HashMap<Token, VecDeque<Cursor<Vec<u8>>>>,
-    server_tx: Sender<server::Event>,
+    server_tx: EventLoopSender<server::Event>,
     host: Arc<String>
 
 }
 
 impl Worker {
 
-    pub fn new(tx: Sender<server::Event>, host: Arc<String>) -> Worker {
+    pub fn new(tx: EventLoopSender<server::Event>, host: Arc<String>) -> Worker {
         Worker {
             streams: HashMap::new(),
             clients: HashMap::new(),
@@ -69,7 +69,7 @@ impl Worker {
         let token = id.token();
         if let Ok(()) = event_loop.register(&mut stream, token) {
             self.streams.insert(token, stream);
-            //self.clients.insert(token, client);
+            self.clients.insert(token, client.clone());
             self.readers.insert(token, Default::default());
             self.buffers.insert(token, VecDeque::new());
             let _ = self.server_tx.send(server::Event::Connected(client));
@@ -105,12 +105,14 @@ impl Handler<(), Event> for Worker {
             },
             Message(id, vec) => {
                 debug!(" sending message {}", String::from_utf8_lossy(vec.as_slice()));
-                self.buffers[id.token()].push_back(Cursor::new(vec))
+                self.buffers[id.token()].push_back(Cursor::new(vec));
+                self.writable(event_loop, id.token())
             },
             SharedMessage(id, vec) => {
                 debug!(" sending message {}", String::from_utf8_lossy(vec.as_slice()));
                 // TODO do not clone, Cursor should also work for soon
-                self.buffers[id.token()].push_back(Cursor::new((*vec).clone()))
+                self.buffers[id.token()].push_back(Cursor::new((*vec).clone()));
+                self.writable(event_loop, id.token())
             }
         }
     }
@@ -127,7 +129,7 @@ impl Handler<(), Event> for Worker {
                     Ok(messages) => for message in messages {
                         match message.map(|m| Message::new(m)) {
                             Ok(Ok(msg)) => {
-                                println!("received message {:?}", String::from_utf8_lossy(&*msg));
+                                debug!("received message {:?}", String::from_utf8_lossy(&*msg));
                                 let cmd = Command::from_message(&msg);
                                 if client.info().status() != Status::Registered {
                                     match cmd {
@@ -165,7 +167,7 @@ impl Handler<(), Event> for Worker {
                 let mut drop_front = false;
                 {
                     let buffer = &mut buffers[0];
-                    let max_pos = buffer.get_ref().len() as u64 - 1;
+                    let max_pos = buffer.get_ref().len() as u64;
                     match stream.write_slice(&*buffer.get_ref()) {
                         Ok(WouldBlock) => break,
                         Ok(Ready(bytes)) => {
@@ -176,7 +178,7 @@ impl Handler<(), Event> for Worker {
                                 buffer.set_position(new_pos)
                             }
                         },
-                        Err(_) => {}
+                        Err(_) => break
                     }
                 }
                 if drop_front {

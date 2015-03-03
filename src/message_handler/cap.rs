@@ -91,6 +91,7 @@ impl MessageHandler for Handler {
         })
     }
     fn invoke(self, server: &mut Server, client: Client) {
+        // TODO CAP LS stop also client registration!!
         use self::Subcommand::*;
         use user::Status::*;
         match self.subcmd() {

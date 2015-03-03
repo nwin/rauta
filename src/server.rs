@@ -12,6 +12,7 @@ use std::collections::HashMap;
 
 use protocol::{Command, ResponseCode, Message};
 use client::{ClientId, Client, MessageOrigin};
+use client_io;
 use message_handler;
 use channel;
 
@@ -24,6 +25,8 @@ pub struct Server {
     channels: HashMap<String, channel::Proxy>,
     tx: Sender<Event>,
     rx: Receiver<Event>,
+    listener: Option<mio::net::tcp::TcpListener>,
+    client_tx: Option<mio::EventLoopSender<client_io::Event>>
 }
 
 pub enum Event {
@@ -57,7 +60,9 @@ impl Server {
             nicks: HashMap::new(),
             channels: HashMap::new(),
             tx: tx,
-            rx: rx
+            rx: rx,
+            listener: None,
+            client_tx: None
         })
     }
     
@@ -88,13 +93,14 @@ impl Server {
     }
 
     pub fn run_mio(&mut self) -> io::Result<()>  {
-        let port = try!(mio::net::tcp::TcpListener::bind(&*format!("{}:{}", self.ip, self.port)));
+        self.listener = Some(try!(mio::net::tcp::TcpListener::bind(&*format!("{}:{}", self.ip, self.port))));
         info!("started listening on {}:{} ({})", self.ip, self.port, self.host);
         let mut server_loop = box try!(EventLoop::new());
         let mut client_loop = box try!(EventLoop::new());
-        try!(server_loop.register(&port, Token(self.port as usize)));
+        self.client_tx = Some(client_loop.channel());
+        try!(server_loop.register(self.listener.as_ref().unwrap(), Token(self.port as usize)));
         let host = Arc::new(self.host.clone());
-        let tx = self.tx.clone();
+        let tx = server_loop.channel();
         spawn(move || {
             use client_io::Worker;
             let _ = client_loop.run(&mut Worker::new(tx, host)).unwrap();
@@ -200,6 +206,11 @@ impl Handler<(), Event> for Server {
                 self.clients.insert(id, client);
             }
         }
+    }
+    fn readable(&mut self, event_loop: &mut EventLoop<(), Event>, token: Token, hint: mio::ReadHint) {
+        if let Ok((stream, _)) = self.listener.as_ref().unwrap().accept() {
+            let _ = self.client_tx.as_ref().unwrap().send(client_io::Event::NewConnection(stream));
+        } 
     }
 }
 

@@ -1,5 +1,5 @@
 debug:
-	cargo build && RUST_LOG=debug ./target/rauta
+	cargo build && RUST_LOG=rauta=debug ./target/rauta
 run:
 	cargo build && ./target/rauta
 check:

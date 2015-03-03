@@ -116,7 +116,8 @@ impl Client {
                 msg.push_all(item)
             }
             msg.push_all(b" :");
-            msg.push_all(payload[last])
+            msg.push_all(payload[last]);
+            msg.push_all(b"\r\n");
         }
         msg
     }
