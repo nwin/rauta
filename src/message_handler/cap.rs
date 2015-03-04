@@ -93,27 +93,14 @@ impl MessageHandler for Handler {
     fn invoke(self, server: &mut Server, client: Client) {
         // TODO CAP LS stop also client registration!!
         use self::Subcommand::*;
-        use user::Status::*;
         match self.subcmd() {
-            LS => server.send_msg(&client, CAP, &[client.nick().as_bytes(), LS.as_bytes()]),
+            LS => {
+                suspend_registration(&client);
+                server.send_msg(&client, CAP, &[client.nick().as_bytes(), LS.as_bytes()])
+            },
             LIST => server.send_msg(&client, CAP, &[client.nick().as_bytes(), LIST.as_bytes()]),
             REQ => {
-                let status = {
-                    // Prevent dead-lock
-                    client.info().status()
-                };
-                match status {
-                    Negotiating(_) => {},
-                    NickRegistered => {
-                        client.info_mut().set_status(user::STATUS_NEG_NICKREG)
-                    }
-                    NameRegistered => {
-                        client.info_mut().set_status(user::STATUS_NEG_NAMEREG)
-                    }
-                    _ => {
-                        client.info_mut().set_status(user::STATUS_NEG_CONNECT)
-                    }
-                }
+                suspend_registration(&client);
                 if let Some(args) = self.args {
                     server.send_msg(&client, CAP, &[client.nick().as_bytes(), NAK.as_bytes(), self.msg.params().nth(args).unwrap()])
                 } else {
@@ -121,28 +108,8 @@ impl MessageHandler for Handler {
                 }
             }
             END => {
-                let status = {
-                    // Prevent dead-lock
-                    client.info().status()
-                };
-                match status {
-                    Negotiating(&NickRegistered) => {
-                        client.info_mut().set_status(NickRegistered)
-                    },
-                    Negotiating(&NameRegistered) => {
-                        client.info_mut().set_status(NameRegistered)
-                    },
-                    Negotiating(&Connected) => {
-                        client.info_mut().set_status(Connected)
-                    },
-                    Negotiating(&Registered) => {
-                        {
-                            client.info_mut().set_status(Registered)
-                        }
-                        server.register(&client)
-                    },
-                    Negotiating(&Disconnected) => unreachable!(),
-                    _ => {}
+                if continue_registration(&client) {
+                    server.register(&client)
                 }
             }
             CLEAR => {
@@ -156,5 +123,59 @@ impl MessageHandler for Handler {
 impl Handler {
     fn subcmd(&self) -> Subcommand {
         Subcommand::from_slice(self.msg.params().nth(0).unwrap()).unwrap()
+    }
+}
+
+/// Suspends the registration process
+fn suspend_registration(client: &Client) {
+    use user::Status::*;
+    let status: user::Status = {
+        // Prevent dead-lock
+        client.info().status()
+    };
+    match status {
+        Negotiating(_) => {},
+        NickRegistered => {
+            client.info_mut().set_status(user::STATUS_NEG_NICKREG)
+        }
+        NameRegistered => {
+            client.info_mut().set_status(user::STATUS_NEG_NAMEREG)
+        }
+        _ => {
+            client.info_mut().set_status(user::STATUS_NEG_CONNECT)
+        }
+    }
+}
+
+/// Un-suspends the registration process
+///
+/// Returns true if the client should be registered now
+fn continue_registration(client: &Client) -> bool {
+    use user::Status::*;
+    let status: user::Status = {
+        // Prevent dead-lock
+        client.info().status()
+    };
+    match status {
+        Negotiating(&NickRegistered) => {
+            client.info_mut().set_status(NickRegistered);
+            false
+        },
+        Negotiating(&NameRegistered) => {
+            client.info_mut().set_status(NameRegistered);
+            false
+        },
+        Negotiating(&Connected) => {
+            client.info_mut().set_status(Connected);
+            false
+        },
+        Negotiating(&Registered) => {
+            {
+                client.info_mut().set_status(Registered)
+            }
+            true
+        },
+        Negotiating(&Disconnected) => unreachable!(),
+        _ => false
     }
 }
