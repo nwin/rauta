@@ -72,7 +72,7 @@ pub fn handle_who(channel: &Channel, client: Client, op_only: bool) {
     } else {
         for member in channel.members() {
             if !op_only || member.is_op() {
-                sender.feed_line(&[
+                sender.feed_items(&[
                     member.username(),
                     member.hostname(),
                     member.client().server_name(),

@@ -329,15 +329,17 @@ impl Channel {
             client, ResponseCode::RPL_NAMREPLY, ResponseCode::RPL_ENDOFNAMES, Some("=")
         );
         for member in self.members() {
-            sender.feed_line_single(member.decorated_nick())
+            sender.feed_item(member.decorated_nick())
         }
     }
 
+    /// Constructs a list sender
     pub fn list_sender<'a>(&'a self, receiver: &'a Client, list_code: ResponseCode,
     end_code: ResponseCode) -> ListSender {
         self.prefixed_list_sender(receiver, list_code, end_code, None)
     }
 
+    /// Constructs a list sender that prefixes the message with `prefix`
     pub fn prefixed_list_sender<'a>(&'a self, receiver: &'a Client, list_code: ResponseCode,
     end_code: ResponseCode, prefix: Option<&'a str>) -> ListSender {
         ListSender {
@@ -362,7 +364,11 @@ impl<'a> ListSender<'a> {
     /// Sends a list item to the sender
     ///
     /// The sender prepends the list item with the channel name and prefix.
-    pub fn feed_line_single(&self, line: &str) {
+    ///
+    /// ## NOTE
+    /// `feed_item` and  `feed_items` will unify as soon as Rust
+    /// supports non-type template arguments
+    pub fn feed_item(&self, line: &str) {
         match self.prefix {
             Some(prefix) => self.receiver.send_response(
                 self.list_code, 
@@ -374,11 +380,14 @@ impl<'a> ListSender<'a> {
             )
         }
     }
-    /// Sends a list item to the sender
+    /// Sends list items to the sender
     ///
-    /// The item may consist of several parameters
-    /// The sender prepends the list item with the channel name and prefix.
-    pub fn feed_line(&self, line: &[&str]) {
+    /// The sender prepends the list items with the channel name and prefix.
+    ///
+    /// ## NOTE
+    /// `feed_line_single` and  `feed_line` will unify as soon as Rust
+    /// supports non-type template arguments
+    pub fn feed_items(&self, line: &[&str]) {
         match self.prefix {
             Some(prefix) => self.receiver.send_response(
                 self.list_code, 

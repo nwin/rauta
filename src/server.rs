@@ -63,12 +63,13 @@ impl Server {
     }
 
     pub fn run_mio(&mut self) -> io::Result<()>  {
-        self.listener = Some(try!(mio::net::tcp::TcpListener::bind(&*format!("{}:{}", self.ip, self.port))));
-        info!("started listening on {}:{} ({})", self.ip, self.port, self.host);
         let mut server_loop = box try!(EventLoop::new());
         let mut client_loop = box try!(EventLoop::new());
         self.server_tx = Some(server_loop.channel());
         self.client_tx = Some(client_loop.channel());
+		// TODO listen to all IP addresses (move lookup_host to here)
+		self.listener = Some(try!(mio::net::tcp::TcpListener::bind(&*format!("{}:{}", self.ip, self.port))));
+		info!("started listening on {}:{} ({})", self.ip, self.port, self.host);
         try!(server_loop.register(self.listener.as_ref().unwrap(), Token(self.port as usize)));
         let host = Arc::new(self.host.clone());
         let tx = server_loop.channel();

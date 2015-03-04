@@ -18,6 +18,7 @@ use client::{Client, ClientId, MessageOrigin};
 use user::{User, Status};
 use server;
 
+/// Events that can be sent to `Worker`
 pub enum Event {
     /// New TCP connection has been established
     NewConnection(TcpStream),
@@ -31,7 +32,7 @@ pub enum Event {
     Shutdown
 }
 
-/// Worker thread
+/// Event handler for client communication
 pub struct Worker {
     streams: HashMap<Token, TcpStream>,
     clients: HashMap<Token, Client>,
@@ -43,7 +44,7 @@ pub struct Worker {
 }
 
 impl Worker {
-
+    /// Constructs a new worker
     pub fn new(tx: EventLoopSender<server::Event>, host: Arc<String>) -> Worker {
         Worker {
             streams: HashMap::new(),

@@ -15,11 +15,19 @@ mod who;
 mod names;
 mod privmsg;
 
+/// Message handler trait
 pub trait MessageHandler {
+    /// Construct a new message handler from a message
+    ///
+    /// If the message is malformed an error is  returned 
     fn from_message(message: Message) -> Result<Self, (ResponseCode, ErrorMessage)>;
+    /// Invokes the message handler
+    ///
+    /// If an error occurs an error message is send to the client
     fn invoke(self, server: &mut Server, client: Client);
 }
 
+/// Possible error messages that can be generated when constructing a message handler
 pub enum ErrorMessage {
     WithSubject(String, &'static str),
     Plain(&'static str),
@@ -30,7 +38,7 @@ macro_rules! handle {
     {$(
         $command:ident with $handler:ty,
     )*} => {
-/// Temporary dispatcher
+/// Dispatches a massage to a message handler
 pub fn invoke(message: Message, server: &mut Server, client: Client) {
     match Command::from_message(&message) {
         $(Some(Command::$command) => {

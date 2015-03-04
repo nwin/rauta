@@ -13,6 +13,7 @@
 #![allow(dead_code)]
 #![allow(unused_imports)]
 #![allow(unused_features)]
+#![allow(missing_docs)]
 
 #[macro_use]
 extern crate log;
