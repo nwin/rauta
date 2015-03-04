@@ -3,7 +3,6 @@
 use std::io;
 use std::net;
 use std::sync::Arc;
-use std::sync::mpsc::{Sender, Receiver, channel};
 use std::thread::spawn;
 use std::collections::HashMap;
 
@@ -169,14 +168,15 @@ impl Handler<(), Event> for Server {
 
 #[cfg(test)]
 pub fn get_test_server() -> Server {
-    Server {
-        host: "testserver.example.com".to_string(),
-        ip: "127.0.0.1".to_string(),
-        port: 0,
-        clients: HashMap::new(),
-        nicks: HashMap::new(),
-        channels: HashMap::new(),
-        tx: unintialized!(),
-        rx: unintialized!(),
-    }
+    panic!()
+    //Server {
+    //    host: "testserver.example.com".to_string(),
+    //    ip: "127.0.0.1".to_string(),
+    //    port: 0,
+    //    clients: HashMap::new(),
+    //    nicks: HashMap::new(),
+    //    channels: HashMap::new(),
+    //    tx: unintialized!(),
+    //    rx: unintialized!(),
+    //}
 }

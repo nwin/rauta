@@ -2,7 +2,6 @@
 
 extern crate libc;
 
-use std::old_io::net::ip::{SocketAddr, Ipv4Addr, Ipv6Addr};
 use self::libc::{sockaddr, sockaddr_in, sockaddr_in6, in_addr, in6_addr, c_int, c_char, socklen_t, AF_INET, AF_INET6};
 use std::mem::{size_of, transmute};
 use std::net;
@@ -74,38 +73,7 @@ fn new_sockaddr_in6(port: u16, addr: in6_addr) -> sockaddr_in6 {
 /// Returns the hostname for an ip address
 /// TODO: make this safe, see manpage
 const HOSTLEN: usize = 80;
-pub fn get_nameinfo(peer_socket: SocketAddr) -> String {
-    let SocketAddr { ip, port } = peer_socket;
-    let mut buf = [0; HOSTLEN];
-    let _ = unsafe {
-        match ip {
-            Ipv4Addr(a, b, c, d) => {
-                let addr = in_addr {
-                    s_addr: (a as u32) << 24 
-                          | (b as u32) << 16 
-                          | (c as u32) << 8 
-                          | (d as u32)
-                };
-                let sockaddr = new_sockaddr_in(port, addr);
-                getnameinfo(transmute(&sockaddr), size_of::<sockaddr_in>() as socklen_t, 
-                            buf.as_mut_ptr() as *mut i8, HOSTLEN as u32, transmute(0usize), 0, 0)
-            },
-            Ipv6Addr(a, b, c, d, e, f, g, h) => {
-                let addr = in6_addr {
-                    s6_addr: [a, b, c, d, e, f, g, h]
-                };
-                let sockaddr = new_sockaddr_in6(port, addr);
-                getnameinfo(transmute(&sockaddr), size_of::<sockaddr_in6>() as socklen_t, 
-                            buf.as_mut_ptr() as *mut i8, HOSTLEN as u32, transmute(0usize), 0, 0)
-            },
-        }
-   
-    };
-    unsafe {String::from_utf8_lossy(ffi::CStr::from_ptr(buf.as_ptr()).to_bytes()).into_owned()}
-
-}
-
-pub fn get_nameinfo_mio(peer_socket: net::SocketAddr) -> String {
+pub fn get_nameinfo(peer_socket: net::SocketAddr) -> String {
     let ip = peer_socket.ip();
     let port = peer_socket.port();
     let mut buf = [0; HOSTLEN];

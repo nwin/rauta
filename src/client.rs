@@ -1,18 +1,14 @@
 //! High-level client communication
 use std::ops;
 use std::sync::{Arc, RwLock, RwLockReadGuard, RwLockWriteGuard};
-use std::sync::mpsc::{Sender, channel};
-use std::thread::spawn;
 use mio;
 use std::io;
 use std::net;
 
 use rand;
 
-use server;
 use client_io;
-use user::{User, Status};
-use protocol::Message;
+use user::User;
 use protocol::{Command, ResponseCode};
 
 #[derive(Hash, Copy, PartialEq, Eq, Clone, Debug)]
@@ -187,7 +183,7 @@ macro_rules! guard {
 ///
 /// Allows to expose only a part of the guarded struct.
 pub struct ReadGuard<'a, T: 'a, R: ?Sized + 'a> {
-    guard: RwLockReadGuard<'a, T>,
+    _guard: RwLockReadGuard<'a, T>,
     ptr: &'a R
 }
 
@@ -205,7 +201,7 @@ impl<'a, T, R: ?Sized> ReadGuard<'a, T, R> {
             unsafe{ &*(&guard as *const RwLockReadGuard<'a, T>) }
         );
         ReadGuard {
-            guard: guard,
+            _guard: guard,
             ptr: ptr,
         }
     }

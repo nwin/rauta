@@ -13,27 +13,23 @@ use server;
 use protocol::ResponseCode;
 use user::HostMask;
 use client::{ClientId, Client};
-use client;
 use client_io;
 
 use self::Event::*;
 // Note if pub-using this it gives hides member from the docs
-use super::{Member, Flags, ChannelMode, modes_do};
+use super::{Member, Flags, ChannelMode};
 
 
 /// Forwards the message to a channel
 pub struct Proxy {
-    name: String,
     tx: Sender<Event>,
     server_tx: EventLoopSender<server::Event>
 }
 
 impl Proxy {
-    fn new(name: String,
-           tx: Sender<Event>, 
+    fn new(tx: Sender<Event>, 
            server_tx: EventLoopSender<server::Event>) -> Proxy {
         Proxy {
-            name: name,
             tx: tx,
             server_tx: server_tx
         }
@@ -94,11 +90,6 @@ pub struct Channel {
     invite_masks: HashSet<HostMask>,
 }
 
-fn to_invoke<F>(func: F) -> F
-where F : FnOnce(&Channel) + Send {
-    func
-}
-
 impl Channel {
     pub fn new(name: String) -> Channel {
         Channel {
@@ -118,14 +109,13 @@ impl Channel {
     /// Starts listening for events in a separate thread
     pub fn listen(self, server_tx: EventLoopSender<server::Event>) -> Proxy {
         let (tx, rx) = channel();
-        let name = self.name.clone();
         spawn(move || {
             let mut this = self;
             for event in rx.iter() {
                 this.dispatch(event)
             }
         });
-        Proxy::new(name, tx, server_tx)
+        Proxy::new(tx, server_tx)
     }
 
     /// Message dispatcher
@@ -399,12 +389,6 @@ impl<'a> ListSender<'a> {
                 &*(vec![self.name] + line)
             )
         }
-    }
-    /// Tells the sender that there are no more items in the list
-    ///
-    /// Note: this happens automatically when the sender is dropped.
-    pub fn end_of_list(self) {
-        drop(self)
     }
 }
 #[unsafe_destructor]

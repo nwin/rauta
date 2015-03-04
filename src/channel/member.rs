@@ -1,7 +1,6 @@
 use std::collections::{HashSet};
 
 use client_io;
-use client;
 use client::{ClientId, Client, MessageOrigin};
 use user::HostMask;
 use protocol::{Command, ResponseCode};

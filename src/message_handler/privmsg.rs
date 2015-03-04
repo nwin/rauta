@@ -4,7 +4,6 @@ use protocol::{ResponseCode, Message};
 use protocol::ResponseCode::*;
 use protocol::Command::PRIVMSG;
 use client::{Client, MessageOrigin};
-use client;
 use client_io;
 use server::Server;
 use misc::Receiver;

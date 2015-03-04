@@ -1,6 +1,8 @@
-debug:
-	cargo build && RUST_LOG=rauta=debug ./target/rauta
+release:
+	cargo build --release
 run:
-	cargo build && ./target/rauta
+	cargo run --release
+debug:
+	RUST_LOG=rauta=debug cargo run
 check:
 	rustc --no-trans src/main.rs

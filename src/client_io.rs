@@ -4,8 +4,7 @@ use std::error::FromError;
 use std::io::Cursor;
 use std::io;
 use std::mem;
-use std::sync::{RwLock, Arc};
-use std::sync::mpsc::Sender;
+use std::sync::Arc;
 use std::default::Default;
 
 use mio::{EventLoop, EventLoopSender, Handler, Token, TryRead, TryWrite, PollOpt, Interest};
@@ -61,7 +60,7 @@ impl Worker {
                            event_loop: &mut EventLoop<(), Event>) -> io::Result<ClientId>
     {
         let id = try!(ClientId::new(&stream));
-        let client_hostname = ::net::get_nameinfo_mio(try!(stream.peer_addr()));
+        let client_hostname = ::net::get_nameinfo(try!(stream.peer_addr()));
         let client = Client::new(
             id,
             User::new(client_hostname),
