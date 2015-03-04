@@ -9,6 +9,7 @@ mod user;
 mod quit;
 mod part;
 mod join;
+mod invite;
 mod topic;
 mod mode;
 mod who;
@@ -73,6 +74,7 @@ handle!{
     PRIVMSG with self::privmsg::Handler,
     NOTICE with self::privmsg::Handler,
     JOIN with self::join::Handler,
+    INVITE with self::invite::Handler,
     WHO with self::who::Handler,
     MODE with self::mode::Handler,
     TOPIC with self::topic::Handler,

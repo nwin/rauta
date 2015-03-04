@@ -4,6 +4,7 @@ use std::sync::{Arc, RwLock, RwLockReadGuard, RwLockWriteGuard};
 use mio;
 use std::io;
 use std::net;
+use std::mem;
 
 use rand;
 
@@ -104,7 +105,7 @@ impl Client {
         self.push_tail(msg, unsafe { mem::transmute(payload) })
     }
     
-    /// Builds a raw message
+    /// Builds a raw message of behalf of this client
     pub fn build_msg(&self, cmd: Command, payload: &[&[u8]], origin: MessageOrigin) -> Vec<u8> {
         use self::MessageOrigin::*;
 
@@ -121,6 +122,16 @@ impl Client {
     /// Sends a message to the client
     pub fn send_msg(&self, cmd: Command, payload: &[&[u8]], origin: MessageOrigin) {
         self.send_raw(self.build_msg(cmd, payload, origin));
+    }
+    
+    /// Sends a message on behalf of `origin` to the client
+    pub fn send_msg_from(&self, cmd: Command, payload: &[&str], origin: &Client) {
+        self.send_raw_msg_from(cmd, unsafe {mem::transmute(payload)}, origin);
+    }
+    
+    /// Sends a raw message on behalf of `origin` to the client
+    pub fn send_raw_msg_from(&self, cmd: Command, payload: &[&[u8]], origin: &Client) {
+        self.send_raw(origin.build_msg(cmd, payload, MessageOrigin::User));
     }
     
     /// Sends a response to the client

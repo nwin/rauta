@@ -156,8 +156,7 @@ fn handle_join(channel: &mut Channel, mut member: Member, password: Option<Vec<u
         );
         return
     }
-    if channel.has_flag(InviteOnly) 
-       && !member.mask_matches_any(channel.invite_masks()) {
+    if channel.is_invite_only() && !channel.is_invited(&member) {
         // Member not invited
         channel.send_response(
             member.client(), 
@@ -185,6 +184,7 @@ fn handle_join(channel: &mut Channel, mut member: Member, password: Option<Vec<u
     // Broadcast that a new member joined the channel and add him
     let msg = Arc::new(member.client().build_msg(JOIN, &[channel.name().as_bytes()], MessageOrigin::User));
     let id = member.id().clone();
+    let _ = channel.remove_from_invite_list(member.id());
     let _ = channel.add_member(member);
     channel.broadcast_raw(msg);
     

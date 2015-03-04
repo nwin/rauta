@@ -45,6 +45,7 @@ commands!{
     NOTICE      #[doc = "`NOTICE <nickname> <text>"];
     MODE        #[doc = "`MODE <channel> {[+|-]|o|p|s|i|t|n|b|v} [<limit>] [<user>] [<ban mask>]`"];
     JOIN        #[doc = "`JOIN ( <channel> *( \",\" <channel> ) [ <key> *( \",\" <key> ) ] )/ \"0\"`"];
+	INVITE		#[doc = "`INVITE <nickname> <channel>`"];
     //PING        #[doc = "`PING` command"];
     WHO         #[doc = "`WHO [ <mask> [ \"o\" ] ]`"];
     NAMES       #[doc = "`NAMES [ <channel> *( \",\" <channel> ) [ <target> ] ]`"];

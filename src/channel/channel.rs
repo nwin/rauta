@@ -84,6 +84,7 @@ pub struct Channel {
     flags: Flags,
     limit: Option<usize>,
     members: HashMap<String, Member>,
+    invite_list: HashSet<ClientId>,
     nicknames: HashMap<ClientId, String>,
     ban_masks: HashSet<HostMask>,
     except_masks: HashSet<HostMask>,
@@ -99,6 +100,7 @@ impl Channel {
             flags: HashSet::new(),
             limit: None,
             members: HashMap::new(),
+            invite_list: HashSet::new(),
             nicknames: HashMap::new(),
             ban_masks: HashSet::new(),
             except_masks: HashSet::new(),
@@ -164,6 +166,17 @@ impl Channel {
     pub fn is_secret(&self) -> bool {
         self.has_flag(ChannelMode::Secret)
     }
+
+    /// Queries whether the channel is invite only
+    pub fn is_invite_only(&self) -> bool {
+        self.has_flag(ChannelMode::InviteOnly)
+    }
+
+    /// Checks if a member is invited
+    pub fn is_invited(&self, member: &Member) -> bool {
+       self.invite_list.contains(&member.id())
+       || member.mask_matches_any(self.invite_masks()) 
+    }
     
     /// Returns the member count
     pub fn member_count(&self) -> usize {
@@ -202,6 +215,16 @@ impl Channel {
     
     pub fn mut_member_with_nick(&mut self, nick: &String) -> Option<&mut Member> {
         self.members.get_mut(nick)
+    }
+
+    /// Adds a client to the invite list after it has been invited
+    pub fn add_to_invite_list(&mut self, id: ClientId) {
+        self.invite_list.insert(id);
+    }
+
+    /// Adds a client to the invite list after it has been invited
+    pub fn remove_from_invite_list(&mut self, id: ClientId) {
+        let _ = self.invite_list.remove(&id);
     }
     
     /// Adds a flag to the channel
