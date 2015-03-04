@@ -110,3 +110,16 @@ impl Handler {
         self.msg.command() == Some(NOTICE)
     }
 }
+
+#[cfg(test)]
+mod test {
+    use test;
+    #[test]
+    fn privmsg_notice() {
+        test::run_server();
+        let mut client = test::Client::registered("privmsg_test");
+        client.send_msg("NOTICE #nonexisting :Hello");
+        client.send_msg("PRIVMSG #nonexisting2 :Hello");
+        client.expect_begin(":localhost 401 privmsg_test #nonexisting2"); // no response for NOTICE
+    }
+}

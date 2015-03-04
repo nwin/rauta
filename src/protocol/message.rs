@@ -181,7 +181,7 @@ mod tests {
 	fn message_parser() {
         let m = Message::new("@tag :prefix JOIN #channel".as_bytes().to_vec()).unwrap();
         assert_eq!(m.prefix().unwrap(), b"prefix");
-        assert_eq!(m.command(), "JOIN");
+        assert_eq!(&*format!("{}", m.command().unwrap()), "JOIN");
         assert_eq!(m.params().nth(0).unwrap(), b"#channel");
 	}
     #[bench]

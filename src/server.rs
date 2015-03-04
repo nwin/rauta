@@ -169,15 +169,15 @@ impl Handler<(), Event> for Server {
 
 #[cfg(test)]
 pub fn get_test_server() -> Server {
-    panic!()
-    //Server {
-    //    host: "testserver.example.com".to_string(),
-    //    ip: "127.0.0.1".to_string(),
-    //    port: 0,
-    //    clients: HashMap::new(),
-    //    nicks: HashMap::new(),
-    //    channels: HashMap::new(),
-    //    tx: unintialized!(),
-    //    rx: unintialized!(),
-    //}
+    Server {
+        host: "localhost".to_string(),
+        ip: "127.0.0.1".to_string(),
+        port: 6667,
+        clients: HashMap::new(),
+        nicks: HashMap::new(),
+        channels: HashMap::new(),
+        listener: None,
+        server_tx: None,
+        client_tx: None
+    }
 }

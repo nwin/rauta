@@ -4,6 +4,7 @@
 #![feature(test)]
 #![feature(libc)]
 #![feature(io)]
+#![feature(old_io)]
 #![feature(net)]
 #![feature(std_misc)]
 #![feature(core)]
