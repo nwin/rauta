@@ -54,8 +54,13 @@ impl Member {
     }
 
     /// Sends a message to the client
-    pub fn send_msg(&self, cmd: Command, payload: &[&[u8]], origin: MessageOrigin) {
+    pub fn send_msg(&self, cmd: Command, payload: &[&str], origin: MessageOrigin) {
         self.client.send_msg(cmd, payload, origin)
+    }
+
+    /// Sends a message to the client
+    pub fn send_raw_msg(&self, cmd: Command, payload: &[&[u8]], origin: MessageOrigin) {
+        self.client.send_raw_msg(cmd, payload, origin)
     }
 
     /// Sends a message to the client

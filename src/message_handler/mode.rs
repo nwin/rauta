@@ -79,12 +79,12 @@ pub fn broadcast_change(channel: &channel::Channel, client: &Client, action: cha
     let msg = Arc::new(match param {
         Some(param) => client.build_msg(
             MODE,
-            &[channel.name().as_bytes(), flag_str.as_slice().as_bytes(), param.as_bytes()], 
+            &[channel.name(), &*flag_str, param], 
             MessageOrigin::User
         ),
         None => client.build_msg(
             MODE,
-            &[channel.name().as_bytes(), flag_str.as_slice().as_bytes()],
+            &[channel.name(), &*flag_str],
             MessageOrigin::User
         )
     });

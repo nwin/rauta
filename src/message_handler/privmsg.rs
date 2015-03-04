@@ -49,8 +49,8 @@ impl MessageHandler for Handler {
             Receiver::Channel(ref name) => match server.channels().get(name) {
                 Some(channel) => {
                     let msg = Arc::new(match msg {
-                        Some(msg) => client.build_msg(PRIVMSG, &[name.as_bytes(), msg], MessageOrigin::User),
-                        None => client.build_msg(PRIVMSG, &[name.as_bytes()], MessageOrigin::User),
+                        Some(msg) => client.build_raw_msg(PRIVMSG, &[name.as_bytes(), msg], MessageOrigin::User),
+                        None => client.build_msg(PRIVMSG, &[name], MessageOrigin::User),
                     });
                     channel.with_ref(move |channel| {
                         use channel::ChannelMode::*;
@@ -91,8 +91,8 @@ impl MessageHandler for Handler {
             Receiver::Nick(ref nick) => match server.client_with_name(&nick) {
                 Some(subject) => {
                     subject.send_raw(match msg {
-                        Some(msg) => client.build_msg(PRIVMSG, &[nick.as_bytes(), msg], MessageOrigin::User),
-                        None => client.build_msg(PRIVMSG, &[nick.as_bytes()], MessageOrigin::User),
+                        Some(msg) => client.build_raw_msg(PRIVMSG, &[nick.as_bytes(), msg], MessageOrigin::User),
+                        None => client.build_msg(PRIVMSG, &[nick], MessageOrigin::User),
                     })
                     
                 },

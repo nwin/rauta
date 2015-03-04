@@ -24,7 +24,7 @@ impl MessageHandler for Handler {
     fn invoke(self, server: &mut Server, client: Client) {
         // Re-generate the message to ensure it is is well-formed
         let msg = Arc::new(match self.reason() {
-            Some(reason) => client.build_msg(Command::QUIT, &[reason], MessageOrigin::User),
+            Some(reason) => client.build_raw_msg(Command::QUIT, &[reason], MessageOrigin::User),
             None => client.build_msg(Command::QUIT, &[], MessageOrigin::User)
         });
         // TODO make this faster

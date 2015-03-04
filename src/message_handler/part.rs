@@ -63,8 +63,8 @@ impl MessageHandler for Handler {
                 channel.with_ref_mut(move |channel| {
                     // Generate part msg
                     let msg = Arc::new(match reason {
-                        Some(ref reason) => client.build_msg(PART, &[channel.name().as_bytes(), &*reason], MessageOrigin::User),
-                        None => client.build_msg(PART, &[channel.name().as_bytes()], MessageOrigin::User)
+                        Some(ref reason) => client.build_raw_msg(PART, &[channel.name().as_bytes(), &*reason], MessageOrigin::User),
+                        None => client.build_msg(PART, &[channel.name()], MessageOrigin::User)
                     });
                     let id = client.id();
                     if let Some(_) = channel.member_with_id(id) {

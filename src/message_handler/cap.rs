@@ -1,4 +1,5 @@
 use std::ascii::AsciiExt;
+use std::ops::Deref;
 use protocol::{ResponseCode, Message};
 use protocol::ResponseCode::*;
 use protocol::Command::CAP;
@@ -57,6 +58,14 @@ impl Subcommand {
     }
 }
 
+impl Deref for Subcommand {
+    type Target = str;
+
+    fn deref(&self) -> &str {
+        self.as_slice()
+    }
+}
+
 impl MessageHandler for Handler {
     fn from_message(message: Message) -> Result<Handler, (ResponseCode, ErrorMessage)> {
         let args = {
@@ -96,15 +105,15 @@ impl MessageHandler for Handler {
         match self.subcmd() {
             LS => {
                 suspend_registration(&client);
-                server.send_msg(&client, CAP, &[client.nick().as_bytes(), LS.as_bytes()])
+                server.send_msg(&client, CAP, &[&*client.nick(), &*LS])
             },
-            LIST => server.send_msg(&client, CAP, &[client.nick().as_bytes(), LIST.as_bytes()]),
+            LIST => server.send_msg(&client, CAP, &[&*client.nick(), &*LIST]),
             REQ => {
                 suspend_registration(&client);
                 if let Some(args) = self.args {
-                    server.send_msg(&client, CAP, &[client.nick().as_bytes(), NAK.as_bytes(), self.msg.params().nth(args).unwrap()])
+                    server.send_raw_msg(&client, CAP, &[client.nick().as_bytes(), NAK.as_bytes(), self.msg.params().nth(args).unwrap()])
                 } else {
-                    server.send_msg(&client, CAP, &[client.nick().as_bytes(), NAK.as_bytes()])
+                    server.send_msg(&client, CAP, &[&*client.nick(), &*NAK])
                 }
             }
             END => {
@@ -113,7 +122,7 @@ impl MessageHandler for Handler {
                 }
             }
             CLEAR => {
-                server.send_msg(&client, CAP, &[client.nick().as_bytes(), ACK.as_bytes()])
+                server.send_msg(&client, CAP, &[&*client.nick(), &*ACK])
             }
             _ => {} // ignore other commands
         }

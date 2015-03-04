@@ -90,7 +90,7 @@ impl MessageHandler for Handler {
                         }
                     };
                     if let Some(new_topic) = new_topic {
-                        channel.broadcast_raw(Arc::new(client.build_msg(
+                        channel.broadcast_raw(Arc::new(client.build_raw_msg(
                             TOPIC,
                             &[channel.name().as_bytes(), &*new_topic],
                             MessageOrigin::User

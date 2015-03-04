@@ -182,7 +182,7 @@ fn handle_join(channel: &mut Channel, mut member: Member, password: Option<Vec<u
     }
     
     // Broadcast that a new member joined the channel and add him
-    let msg = Arc::new(member.client().build_msg(JOIN, &[channel.name().as_bytes()], MessageOrigin::User));
+    let msg = Arc::new(member.client().build_msg(JOIN, &[channel.name()], MessageOrigin::User));
     let id = member.id().clone();
     let _ = channel.remove_from_invite_list(member.id());
     let _ = channel.add_member(member);

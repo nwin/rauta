@@ -139,7 +139,7 @@ impl Handler<(), Event> for Worker {
             if let Some(client) = self.clients.get(&token) {
                 // The quit message will trigger a disconnect event
                 let _ = self.server_tx.send(server::Event::InboundMessage(client.id(), Message::new(client.build_msg(
-                    QUIT, &[b"Client hung up"], MessageOrigin::User
+                    QUIT, &["Client hung up"], MessageOrigin::User
                 )).unwrap()));
             }
         } else {

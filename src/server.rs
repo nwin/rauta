@@ -86,8 +86,13 @@ impl Server {
     }
 
     /// Sends a response to the client
-    pub fn send_msg(&self, client: &Client, cmd: Command, payload: &[&[u8]]) {
+    pub fn send_msg(&self, client: &Client, cmd: Command, payload: &[&str]) {
         client.send_msg(cmd, payload, MessageOrigin::Server);
+    }
+
+    /// Sends a response to the client
+    pub fn send_raw_msg(&self, client: &Client, cmd: Command, payload: &[&[u8]]) {
+        client.send_raw_msg(cmd, payload, MessageOrigin::Server);
     }
 
     pub fn register(&self, client: &Client) {

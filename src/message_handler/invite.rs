@@ -88,10 +88,10 @@ impl MessageHandler for Handler {
                                     RPL_INVITING,
                                     &[channel.name(), &*target.nick()]
                                 );
-                                client.send_msg_from(
+                                target.send_msg_from(
                                     INVITE, 
                                     &[&*target.nick(), channel.name()],
-                                    &target
+                                    &client
                                 );
                                 true // add to invite list (borrowing problem)
                             }
