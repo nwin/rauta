@@ -151,7 +151,7 @@ impl Handler<(), Event> for Worker {
                         match message.map(|m| Message::new(m)) {
                             Ok(Ok(msg)) => {
                                 debug!("received message {:?}", String::from_utf8_lossy(&*msg));
-                                let cmd = Command::from_message(&msg);
+                                let cmd = msg.command();
                                 if client.info().status() != Status::Registered {
                                     match cmd {
                                         Some(CAP) | Some(NICK) | Some(USER) | Some(QUIT) => (),

@@ -17,10 +17,14 @@ pub enum Command {
 }
 
 impl Command {
-    /// Extracts the command from a Message. 
-    pub fn from_message(message: &Message) -> Option<Command> {
+    /// Contructs a command from a string 
+    pub fn from_str(cmd: &str) -> Option<Command> {
+        Command::from_slice(cmd.as_bytes())
+    }
+    /// Contructs a command from a string 
+    pub fn from_slice(cmd: &[u8]) -> Option<Command> {
         // TODO add REPLY(...)
-        $(if message.command() == stringify!($ident) { Some(Command::$ident) } else)* {
+        $(if cmd == stringify!($ident).as_bytes() { Some(Command::$ident) } else)* {
             None
         }
     }
@@ -38,7 +42,7 @@ impl fmt::Display for Command {
 
 commands!{
     PRIVMSG     #[doc = "`PRIVMSG <msgtarget> <text to be sent>`"];
-    //NOTICE      #[doc = "`NOTICE` command"];
+    NOTICE      #[doc = "`NOTICE <nickname> <text>"];
     MODE        #[doc = "`MODE <channel> {[+|-]|o|p|s|i|t|n|b|v} [<limit>] [<user>] [<ban mask>]`"];
     JOIN        #[doc = "`JOIN ( <channel> *( \",\" <channel> ) [ <key> *( \",\" <key> ) ] )/ \"0\"`"];
     //PING        #[doc = "`PING` command"];

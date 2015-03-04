@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use protocol::{ResponseCode, Message};
 use protocol::ResponseCode::*;
-use protocol::Command::PRIVMSG;
+use protocol::Command::{NOTICE, PRIVMSG};
 use client::{Client, MessageOrigin};
 use client_io;
 use server::Server;
@@ -11,9 +11,10 @@ use misc;
 
 use super::{MessageHandler, ErrorMessage};
 
-/// Handler for PRIVMSG message
+/// Handler for PRIVMSG and NOTICE messages
 ///
 /// `PRIVMSG <msgtarget> <text to be sent>`
+/// `NOTICE <msgtarget> <text>`
 #[derive(Debug)]
 pub struct Handler {
     msg: Message,
@@ -22,19 +23,20 @@ pub struct Handler {
 
 impl MessageHandler for Handler {
     fn from_message(message: Message) -> Result<Handler, (ResponseCode, ErrorMessage)> {
+        let is_notice = message.command() == Some(NOTICE);
         let recv = if let Some(receiver) = message.params().next() {
             match misc::verify_receiver(receiver) {
                 Some(receiver) => receiver,
                 None => return Err((
-                    ERR_NOSUCHNICK,
+                    ERR_NOSUCHNICK, if is_notice { ErrorMessage::None } else {
                     ErrorMessage::WithSubject(format!("{}", String::from_utf8_lossy(receiver)), "No such nick/channel")
-                ))
+                }))
             }
         } else {
             return Err((
-                ERR_NORECIPIENT, 
+                ERR_NORECIPIENT, if is_notice { ErrorMessage::None } else {
                 ErrorMessage::Detailed(format!("No recipient given ({})", PRIVMSG))
-            ))
+            }))
         };
         Ok(Handler {
             msg: message,
@@ -81,10 +83,10 @@ impl MessageHandler for Handler {
                         }
                     })
                 },
-                None => client.send_response(
+                None => if ! self.is_notice() { client.send_response(
                     ERR_NOSUCHNICK,
                     &[name, "No such nick/channel"]
-                )
+                )}
             },
             Receiver::Nick(ref nick) => match server.client_with_name(&nick) {
                 Some(subject) => {
@@ -94,11 +96,17 @@ impl MessageHandler for Handler {
                     })
                     
                 },
-                None => client.send_response(
+                None => if ! self.is_notice() { client.send_response(
                     ERR_NOSUCHNICK,
                     &[nick, "No such nick/channel"]
-                )
+                )}
             }
         }
+    }
+}
+
+impl Handler {
+    fn is_notice(&self) -> bool {
+        self.msg.command() == Some(NOTICE)
     }
 }

@@ -1,4 +1,5 @@
 use std::ops::Range;
+use super::Command;
 use std::ascii::AsciiExt;
 use std::fmt;
 use std::ops;
@@ -111,11 +112,8 @@ impl Message {
     }
     
     /// Returns the command part of the message.
-    pub fn command(&self) -> &str {
-        use std::mem;
-        // This is safe because the parser already checked that the
-        // command only contains valid ASCII chars
-        unsafe { mem::transmute(&self.message[self.command]) }
+    pub fn command(&self) -> Option<Command> {
+        Command::from_slice(&self.message[self.command])
     }
     
     /// Returns the parameters of the command.

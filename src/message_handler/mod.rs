@@ -29,9 +29,14 @@ pub trait MessageHandler {
 
 /// Possible error messages that can be generated when constructing a message handler
 pub enum ErrorMessage {
+    /// Simple error message with parameter
     WithSubject(String, &'static str),
+    /// Simple error message
     Plain(&'static str),
-    Detailed(String)
+    /// Detailed error message
+    Detailed(String),
+    /// No error message is generated. Only used for NOTICE
+    None
 }
 
 macro_rules! handle {
@@ -40,7 +45,7 @@ macro_rules! handle {
     )*} => {
 /// Dispatches a massage to a message handler
 pub fn invoke(message: Message, server: &mut Server, client: Client) {
-    match Command::from_message(&message) {
+    match message.command() {
         $(Some(Command::$command) => {
             match <$handler>::from_message(message) {
                 Ok(handler) => handler.invoke(server, client),
@@ -54,6 +59,7 @@ pub fn invoke(message: Message, server: &mut Server, client: Client) {
                     ErrorMessage::Detailed(string) => {
                         server.send_response(&client, code, &[&*string])
                     }
+                    ErrorMessage::None => ()
                 }
             }
         },)*
@@ -65,6 +71,7 @@ pub fn invoke(message: Message, server: &mut Server, client: Client) {
 
 handle!{
     PRIVMSG with self::privmsg::Handler,
+    NOTICE with self::privmsg::Handler,
     JOIN with self::join::Handler,
     WHO with self::who::Handler,
     MODE with self::mode::Handler,
