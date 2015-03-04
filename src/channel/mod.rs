@@ -11,6 +11,14 @@ use protocol::{Params};
 pub use self::channel::{Channel, Proxy};
 pub use self::member::{Member};
 
+
+// ~ for owners – to get this, you need to be +q in the channel
+// & for admins – to get this, you need to be +a in the channel
+// @ for full operators – to get this, you need to be +o in the channel
+// % for half operators – to get this, you need to be +h in the channel
+// + for voiced users – to get this, you need to be +v in the channel
+// Users with no status in the channel will have no nick prefix
+
 /// Enumeration of possible channel modes
 /// as of http://tools.ietf.org/html/rfc2811#section-4
 #[derive(FromPrimitive, Debug, Hash, PartialEq, Eq, Copy)]
