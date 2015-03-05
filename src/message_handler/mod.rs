@@ -39,6 +39,11 @@ pub enum ParseError<'a> {
     Malformed(&'a [u8]),
 }
 
+enum OnError {
+    Skip,
+    Fail
+}
+
 #[derive(Debug)]
 /// Parses a and verifies a comma separated list
 pub struct CommaSeparated<T: ?Sized> {
@@ -48,19 +53,39 @@ pub struct CommaSeparated<T: ?Sized> {
 }
 
 impl<T: ?Sized> CommaSeparated<T> {
-    fn verify<'a, F>(verify: F, mut params: Params<'a>, index: usize)
+    fn verify<'a, F>(verify: F, params: Params<'a>, index: usize)
+    -> Result<CommaSeparated<T>, ParseError<'a>> 
+    where F: Fn(&[u8]) -> Option<&T> {
+        CommaSeparated::verify_on_error(verify, params, index, OnError::Fail)
+    }
+    fn verify_no_error<'a, F>(verify: F, params: Params<'a>, index: usize)
+    -> CommaSeparated<T>
+    where F: Fn(&[u8]) -> Option<&T>  {
+        CommaSeparated::verify_on_error(verify, params, index, OnError::Skip).ok().unwrap()
+    }
+    /// If called with on_error = Skip the result is safe to unwrap
+    fn verify_on_error<'a, F>(verify: F, mut params: Params<'a>, index: usize, on_error: OnError)
     -> Result<CommaSeparated<T>, ParseError<'a>>
     where F: Fn(&[u8]) -> Option<&T> {
         let mut parameters = [0..0, 0..0, 0..0, 0..0, 0..0, 0..0, 0..0, 0..0, 0..0, 0..0];
         if let Some(params) = params.nth(index) {
             let mut start = 0;
-            for (i, param) in params.split(|c| *c == b',').enumerate() {
+            let mut i = 0;
+            for param in params.split(|c| *c == b',') {
                 let len = param.len();
+                if len > parameters.len() { match on_error {
+                        OnError::Skip => (),
+                        OnError::Fail => return Err(ParseError::TooMany)
+                }}
                 match verify(param) {
                     Some(_) => {
                         parameters[i] = start..start+len;
+                        i += 1;
                     },
-                    None => return Err(ParseError::Malformed(param))
+                    None => match on_error {
+                        OnError::Skip => (),
+                        OnError::Fail => return Err(ParseError::Malformed(param))
+                    }
                 }
                 start += len + 1
             }

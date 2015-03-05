@@ -25,6 +25,7 @@ use super::{MessageHandler, ErrorMessage};
 /// @/+ is op/voice.
 /// * is maybe irc op
 /// H/G means here/gone in terms of the away status
+/// WHO [<name> [<o>]]
 #[derive(Debug)]
 pub struct Handler {
     msg: Message,

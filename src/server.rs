@@ -63,8 +63,8 @@ impl Server {
     }
 
     pub fn run_mio(&mut self) -> io::Result<()>  {
-        let mut server_loop = box try!(EventLoop::new());
-        let mut client_loop = box try!(EventLoop::new());
+        let mut server_loop = try!(EventLoop::new());
+        let mut client_loop = try!(EventLoop::new());
         self.server_tx = Some(server_loop.channel());
         self.client_tx = Some(client_loop.channel());
 		// TODO listen to all IP addresses (move lookup_host to here)

@@ -9,7 +9,7 @@ use client::{Client, MessageOrigin};
 use server::Server;
 use misc;
 
-use super::{MessageHandler, ErrorMessage};
+use super::{MessageHandler, ErrorMessage, CommaSeparated, ParseError};
 
 /// Handler for PART message
 ///
@@ -17,47 +17,30 @@ use super::{MessageHandler, ErrorMessage};
 #[derive(Debug)]
 pub struct Handler {
     msg: Message,
-    destinations: Vec<Range<usize>>,
+    channels: CommaSeparated<str>,
     reason: Option<()>
 }
 
 impl MessageHandler for Handler {
     fn from_message(message: Message) -> Result<Handler, (ResponseCode, ErrorMessage)> {
-        let mut destinations = Vec::new();
-        let reason = {
-            let mut params = message.params();
-            if let Some(channels) = params.next() {
-                let mut start = 0;
-                for channel_name in channels.split(|c| *c == b',') {
-                    let len = channel_name.len();
-                    if let Some(_) = misc::verify_channel(channel_name) {
-                        destinations.push(start..start+len)
-                    } else {
-                        return Err((
-                            ERR_NEEDMOREPARAMS,
-                            ErrorMessage::WithSubject(
-                                String::from_utf8_lossy(channel_name).into_owned(), 
-                                "Invalid channel name"
-                            )
-                        ))
-                    }
-                    start += len + 1
-                }
-            }
-            if let Some(_) = params.next() {
-                Some(())
-            } else {
-                None
-            }
+        let channels = CommaSeparated::verify_no_error(misc::verify_channel, message.params(), 0);
+        let reason = if let Some(_) = message.params().nth(1) {
+            Some(())
+        } else {
+            None
         };
-        Ok(Handler {
-            msg: message,
-            destinations: destinations,
-            reason: reason
-        })
+        if channels.iter(message.params()).count() == 0 {
+            Err((ERR_NEEDMOREPARAMS, ErrorMessage::WithSubject(format!("{}", PART), "No channel name given")))
+        } else {
+            Ok(Handler {
+                msg: message,
+                channels: channels,
+                reason: reason
+            })   
+        }
     }
     fn invoke(self, server: &mut Server, client: Client) {
-        for chan_name in self.destinations() {
+        for chan_name in self.channels.iter(self.msg.params()) {
             if let Some(channel) = server.channels().get(chan_name) {
                 let client = client.clone();
                 let reason = self.reason().map(|v| v.to_vec());
@@ -88,33 +71,7 @@ impl MessageHandler for Handler {
     }
 }
 
-struct Destinations<'a> {
-    h: &'a Handler,
-    i: usize
-}
-
-impl<'a> Iterator for Destinations<'a> {
-    type Item = &'a str;
-
-    fn next(&mut self) -> Option<&'a str> {
-        let channels = self.h.msg.params().next().unwrap();
-        if self.i < self.h.destinations.len() {
-            let entry = &self.h.destinations[self.i];
-            self.i += 1;
-            str::from_utf8(&channels[*entry]).ok()
-        } else {
-            None
-        }
-    }
-}
-
 impl Handler {
-    fn destinations(&self) -> Destinations {
-        Destinations {
-            h: self,
-            i: 0
-        }
-    }
     fn reason(&self) -> Option<&[u8]> {
         self.reason.map(|_| self.msg.params().nth(1).unwrap() )
     }
