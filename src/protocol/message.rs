@@ -123,7 +123,7 @@ impl Message {
     pub fn params(&self) -> Params {
         Params {
             msg: self,
-            i: 0 - 1
+            i: 0
         }
     }
 
@@ -165,10 +165,10 @@ impl<'a> Iterator for Params<'a> {
     type Item = &'a [u8];
     
     fn next(&mut self) -> Option<&'a [u8]> {
-        self.i += 1;
-        self.msg.params.get(self.i).map( |range|
+        self.msg.params.get(self.i).map( |range| {
+            self.i += 1;
             &self.msg.message[*range]
-        )
+        })
     }
 }
 
