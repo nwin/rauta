@@ -1,5 +1,6 @@
 use std::sync::Arc;
 use std::ops::Range;
+use std::iter::repeat;
 use std::collections::hash_map::Entry::{Occupied, Vacant};
 
 use protocol::{ResponseCode, Message};
@@ -10,7 +11,7 @@ use server::Server;
 use channel::{Channel, Member};
 use misc;
 
-use super::{MessageHandler, ErrorMessage};
+use super::{MessageHandler, ErrorMessage, CommaSeparated, ParseError};
 
 /// Handler for JOIN message
 ///
@@ -18,56 +19,54 @@ use super::{MessageHandler, ErrorMessage};
 #[derive(Debug)]
 pub struct Handler {
     msg: Message,
-    destinations: Vec<(Option<Range<usize>>, Option<Range<usize>>)>,
+    channels: CommaSeparated<str>,
+    passwords: CommaSeparated<[u8]>,
 }
 
 impl MessageHandler for Handler {
     fn from_message(message: Message) -> Result<Handler, (ResponseCode, ErrorMessage)> {
         // TODO filter out reserved names like "*"
-        let mut destinations = Vec::new();
-        {
-            let mut params = message.params();
-            if let Some(channels) = params.next() {
-                let mut start = 0;
-                for channel_name in channels.split(|c| *c == b',') {
-                    let len = channel_name.len();
-                    match misc::verify_channel(channel_name) {
-                        Some(_) => {
-                            destinations.push((Some(start..start+len), None));
-                        },
-                        None => return Err((
-                            ERR_NEEDMOREPARAMS,
-                            ErrorMessage::WithSubject(
-                                String::from_utf8_lossy(channel_name).into_owned(), 
-                                "Invalid channel name"
-                            )
-                        ))
-                    }
-                    start += len + 1
-                }
-                if let Some(passwords) = params.next() {
-                    let mut start = 0;
-                    for (channel, password) in destinations.iter_mut().zip(passwords.split(|c| *c == b',')) {
-                        let len = password.len();
-                        channel.1 = Some(start..start+len);
-                        start += len + 1
-                    }
-                }
-            } else {
-                return Err((ERR_NEEDMOREPARAMS, ErrorMessage::WithSubject(format!("{}", JOIN), "No channel name given")))
+        match CommaSeparated::verify(misc::verify_channel, message.params(), 0) {
+            Ok(channels) => {
+                let passwords = CommaSeparated
+                    ::verify(|v| Some(v), message.params(), 1)
+                    .unwrap_or(CommaSeparated::empty());
+                Ok((channels, passwords))
             }
-        }
-        Ok(Handler {
-            msg: message,
-            destinations: destinations
-        })
+            Err(ParseError::Malformed(channel_name)) => Err((
+                ERR_NEEDMOREPARAMS,
+                ErrorMessage::WithSubject(
+                    String::from_utf8_lossy(channel_name).into_owned(), 
+                    "Invalid channel name"
+                )
+            )),
+            Err(ParseError::TooMany) => Err((
+                ERR_TOOMANYTARGETS, 
+                ErrorMessage::WithSubject(
+                    format!("{}", JOIN), 
+                    "Number of targets is limited to 10"
+                )
+            )),
+            Err(ParseError::Missing) => Err((
+                ERR_NEEDMOREPARAMS, 
+                ErrorMessage::WithSubject(format!("{}", JOIN), "No channel name given")
+            )),
+        }.map(|(channels, passwords)|
+            Handler {
+                msg: message,
+                channels: channels,
+                passwords: passwords,
+            }
+        )
     }
     fn invoke(self, server: &mut Server, client: Client) {
         use channel::ChannelMode::*;
         let tx = server.tx().clone();
-        for (channel, password) in self.destinations() {
+        let msg = self.msg;
+        let mut passwords = self.passwords.iter(msg.params());
+        for channel in self.channels.iter(msg.params()) {
             let member = Member::new(client.clone());
-            let password = password.map(|v| v.to_vec());
+            let password = passwords.next().map(|v| v.to_vec());
             match server.channels_mut().entry(channel.to_string()) {
                 Occupied(entry) => entry.into_mut(),
                 Vacant(entry) => {
@@ -79,51 +78,6 @@ impl MessageHandler for Handler {
             }.with_ref_mut(move |channel| {
                 handle_join(channel, member, password)
             })
-        }
-    }
-}
-
-struct Destinations<'a> {
-    h: &'a Handler,
-    i: usize
-}
-
-impl<'a> Iterator for Destinations<'a> {
-    type Item = (&'a str, Option<&'a [u8]>);
-
-    fn next(&mut self) -> Option<(&'a str, Option<&'a [u8]>)> {
-        use std::mem;
-        let mut p = self.h.msg.params();
-        let names = p.next();
-        let passwords = p.next();
-        while self.i < self.h.destinations.len() {
-            let entry = &self.h.destinations[self.i];
-            self.i += 1;
-            match entry {
-                &(Some(ref r1), Some(ref r2)) => {
-                    return Some((
-                        unsafe{mem::transmute(&names.unwrap()[*r1])},
-                        Some(&passwords.unwrap()[*r2])
-                    ))
-                }
-                &(Some(ref r1), None) => {
-                    return Some((
-                        unsafe{mem::transmute(&names.unwrap()[*r1])},
-                        None
-                    ))
-                }
-                _ => ()
-            }
-        }
-        None
-    }
-}
-
-impl Handler {
-    fn destinations(&self) -> Destinations {
-        Destinations {
-            h: self,
-            i: 0
         }
     }
 }

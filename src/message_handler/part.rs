@@ -1,5 +1,6 @@
 use std::ops::Range;
 use std::sync::Arc;
+use std::str;
 
 use protocol::{ResponseCode, Message};
 use protocol::ResponseCode::*;
@@ -96,12 +97,11 @@ impl<'a> Iterator for Destinations<'a> {
     type Item = &'a str;
 
     fn next(&mut self) -> Option<&'a str> {
-        use std::mem;
         let channels = self.h.msg.params().next().unwrap();
         if self.i < self.h.destinations.len() {
             let entry = &self.h.destinations[self.i];
             self.i += 1;
-            Some(unsafe{mem::transmute(&channels[*entry])})
+            str::from_utf8(&channels[*entry]).ok()
         } else {
             None
         }

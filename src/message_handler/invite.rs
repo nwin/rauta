@@ -1,5 +1,6 @@
 use std::ops::Range;
 use std::sync::Arc;
+use std::str;
 
 use protocol::{ResponseCode, Message};
 use protocol::ResponseCode::*;
@@ -128,11 +129,9 @@ impl MessageHandler for Handler {
 
 impl Handler {
     fn nick(&self) -> &str {
-        use std::mem;
-        unsafe { mem::transmute(self.msg.params().nth(0).unwrap()) }
+        str::from_utf8(self.msg.params().nth(0).unwrap()).unwrap()
     }
     fn channel(&self) -> &str {
-        use std::mem;
-        unsafe { mem::transmute(self.msg.params().nth(1).unwrap()) }
+        str::from_utf8(self.msg.params().nth(1).unwrap()).unwrap()
     }
 }

@@ -1,4 +1,5 @@
 use std::sync::Arc;
+use std::str;
 
 use protocol::{ResponseCode, Message};
 use protocol::ResponseCode::*;
@@ -110,9 +111,7 @@ impl MessageHandler for Handler {
 impl Handler {
     fn name(&self) -> &str {
         use std::mem::transmute;
-        unsafe {
-            transmute(self.msg.params().nth(0).unwrap())
-        }
+        str::from_utf8(self.msg.params().nth(0).unwrap()).unwrap()
 
     }
     fn topic(&self) -> Option<&[u8]> {

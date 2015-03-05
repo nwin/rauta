@@ -88,7 +88,6 @@ impl MessageHandler for Handler {
 
 impl Handler {
     fn nick(&self) -> &str {
-    	use std::mem::transmute;
-    	unsafe { transmute(self.msg.params().next().unwrap()) }
+    	str::from_utf8(self.msg.params().next().unwrap()).unwrap()
     }
 }

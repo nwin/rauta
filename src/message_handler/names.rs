@@ -1,4 +1,5 @@
 use std::ops::Range;
+use std::str;
     
 use protocol::{ResponseCode, Message};
 use client::Client;
@@ -61,7 +62,7 @@ impl<'a> Iterator for Destinations<'a> {
         if self.i < self.h.destinations.len() {
             let entry = &self.h.destinations[self.i];
             self.i += 1;
-            Some(unsafe{mem::transmute(&channels[*entry])})
+            Some(str::from_utf8(&channels[*entry]).unwrap())
         } else {
         	None
         }

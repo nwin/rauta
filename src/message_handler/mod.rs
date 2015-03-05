@@ -1,5 +1,10 @@
 //! Message handler implementations
+use std::ops::Range;
+use std::str;
+use std::marker::PhantomData;
+
 use protocol::{Message, Command, ResponseCode};
+use protocol::Params;
 use server::Server;
 use client::Client;
 
@@ -26,6 +31,113 @@ pub trait MessageHandler {
     ///
     /// If an error occurs an error message is send to the client
     fn invoke(self, server: &mut Server, client: Client);
+}
+
+pub enum ParseError<'a> {
+    Missing,
+    TooMany,
+    Malformed(&'a [u8]),
+}
+
+#[derive(Debug)]
+/// Parses a and verifies a comma separated list
+pub struct CommaSeparated<T: ?Sized> {
+    index: usize,
+    parameters: [Range<usize>; 10],
+    _phantom: PhantomData<Box<T>>
+}
+
+impl<T: ?Sized> CommaSeparated<T> {
+    fn verify<'a, F>(verify: F, mut params: Params<'a>, index: usize)
+    -> Result<CommaSeparated<T>, ParseError<'a>>
+    where F: Fn(&[u8]) -> Option<&T> {
+        let mut parameters = [0..0, 0..0, 0..0, 0..0, 0..0, 0..0, 0..0, 0..0, 0..0, 0..0];
+        if let Some(params) = params.nth(index) {
+            let mut start = 0;
+            for (i, param) in params.split(|c| *c == b',').enumerate() {
+                let len = param.len();
+                match verify(param) {
+                    Some(_) => {
+                        parameters[i] = start..start+len;
+                    },
+                    None => return Err(ParseError::Malformed(param))
+                }
+                start += len + 1
+            }
+            Ok(CommaSeparated {
+                index: index,
+                parameters: parameters,
+                _phantom: PhantomData
+            })
+        } else {
+            Err(ParseError::Missing)
+        }
+    }
+
+    /// Generates an iterator over the parameters
+    fn iter<'a>(&'a self, params: Params<'a>) -> ParameterIterator<'a, T> {
+        ParameterIterator {
+            list: self,
+            params: params,
+            pos: 0,
+        }
+    }
+
+    fn empty() -> CommaSeparated<T> {
+        CommaSeparated {
+            index: 0,
+            parameters: [0..0, 0..0, 0..0, 0..0, 0..0, 0..0, 0..0, 0..0, 0..0, 0..0],
+            _phantom: PhantomData
+        }
+    }
+}
+
+#[derive(Debug)]
+pub struct ParameterIterator<'a, T: ?Sized> where T: 'a {
+    list: &'a CommaSeparated<T>,
+    params: Params<'a>,
+    pos: usize,
+}
+
+impl<'a> Iterator for ParameterIterator<'a, str> {
+    type Item = &'a str;
+
+    fn next(&mut self) -> Option<&'a str> {
+        use std::mem::transmute;
+        unsafe {
+            transmute::<_, &mut ParameterIterator<'a, [u8]>>(self).next().map(
+                |v| str::from_utf8(v).unwrap()
+                // possible speed optimization:
+                // if uncommented iter() must be marked as unsafe and called with the
+                // same arguments as verify
+                //|v| transmute(v)
+            )
+        }
+        
+
+    }
+}
+
+impl<'a> Iterator for ParameterIterator<'a, [u8]> {
+    type Item = &'a [u8];
+
+    fn next(&mut self) -> Option<&'a [u8]> {
+        use std::mem;
+        if let Some(item) = self.list.parameters.get(self.pos) {
+            if item != &(0..0) {
+                let res = self.params.nth(self.list.index).map(
+                    |v| &v[*item]
+                );
+                self.pos += 1;
+                res
+            } else {
+                None
+            }
+        } else {
+            None
+        }
+
+    }
 }
 
 /// Possible error messages that can be generated when constructing a message handler

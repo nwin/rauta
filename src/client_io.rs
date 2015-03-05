@@ -10,7 +10,6 @@ use std::default::Default;
 use mio::{EventLoop, EventLoopSender, Handler, Token, TryRead, TryWrite, PollOpt, Interest};
 use mio::net::tcp::TcpStream;
 use mio::buf::{RingBuf, MutBuf, Buf};
-use mio::NonBlock::*;
 use mio;
 
 use protocol::{Message, Command};
@@ -190,8 +189,8 @@ impl Handler<(), Event> for Worker {
                     let buffer = &mut buffers[0];
                     let max_pos = buffer.get_ref().len() as u64;
                     match stream.write_slice(&*buffer.get_ref()) {
-                        Ok(WouldBlock) => break,
-                        Ok(Ready(bytes)) => {
+                        Ok(None) => break,
+                        Ok(Some(bytes)) => {
                             let new_pos = buffer.position() + bytes as u64;
                             if new_pos == max_pos {
                                 drop_front = true;
