@@ -14,6 +14,7 @@ use client::{ClientId, Client, MessageOrigin};
 use client_io;
 use message_handler;
 use channel;
+use services::nickserv::NickServ;
 
 pub struct Server {
     host: String,
@@ -25,6 +26,7 @@ pub struct Server {
     listener: Option<mio::net::tcp::TcpListener>,
     server_tx: Option<EventLoopSender<Event>>,
     client_tx: Option<EventLoopSender<client_io::Event>>,
+    nick_serv: Option<NickServ>,
 }
 
 pub enum Event {
@@ -58,7 +60,8 @@ impl Server {
             channels: HashMap::new(),
             listener: None,
             server_tx: None,
-            client_tx: None
+            client_tx: None,
+            nick_serv: Some(NickServ::new().init()),
         })
     }
 
@@ -183,6 +186,7 @@ pub fn get_test_server() -> Server {
         channels: HashMap::new(),
         listener: None,
         server_tx: None,
-        client_tx: None
+        client_tx: None,
+        nick_serv: None
     }
 }

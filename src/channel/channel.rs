@@ -79,7 +79,7 @@ enum Event {
 /// This includes authentification, per channel bans etc.
 pub struct Channel {
     name: String,
-    topic: Vec<u8>,
+    topic: String,
     password: Option<Vec<u8>>,
     flags: Flags,
     limit: Option<usize>,
@@ -95,7 +95,7 @@ impl Channel {
     pub fn new(name: String) -> Channel {
         Channel {
             name: name,
-            topic: b"".to_vec(),
+            topic: "".to_string(),
             password: None,
             flags: HashSet::new(),
             limit: None,
@@ -134,12 +134,12 @@ impl Channel {
     }
     
     /// Getter for topic
-    pub fn topic(&self) -> &[u8] {
-        self.topic.as_slice()
+    pub fn topic(&self) -> &str {
+        &*self.topic
     }
     
     /// Setter for topic
-    pub fn set_topic(&mut self, topic: Vec<u8>) {
+    pub fn set_topic(&mut self, topic: String) {
         self.topic = topic
     }
     

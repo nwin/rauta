@@ -144,9 +144,15 @@ fn handle_join(channel: &mut Channel, mut member: Member, password: Option<Vec<u
     
     // Topic reply
     let member = channel.member_with_id(id).unwrap();
-    member.send_response(RPL_NOTOPIC, 
-        &[channel.name(), "No topic set."]
-    );
+    if channel.topic() == "" {
+        member.send_response(RPL_NOTOPIC, 
+            &[channel.name(), "No topic set."]
+        )
+    } else {
+        member.send_response(RPL_TOPIC, 
+            &[channel.name(), channel.topic()]
+        )
+    } 
     channel.send_names(member.client())
 }
 
@@ -160,12 +166,15 @@ mod tests {
     #[test]
     fn parse_destinations() {
         let msg = Message::new(b"JOIN #hello,#world pass".to_vec()).unwrap();
-        let handler = Handler::from_message(msg).ok().unwrap();
-        let mut destinations = handler.destinations();
-        let (name, pw) = destinations.next().unwrap();
+        let h = Handler::from_message(msg).ok().unwrap();
+        let mut c = h.channels.iter(h.msg.params());
+        let mut p = h.passwords.iter(h.msg.params());
+        let name = c.next().unwrap();
+        let pw = p.next();
         assert_eq!(name, "#hello");
         assert_eq!(pw, Some(b"pass"));
-        let (name, pw) = destinations.next().unwrap();
+        let name = c.next().unwrap();
+        let pw = p.next();
         assert_eq!(name, "#world");
         assert_eq!(pw, None);
     }

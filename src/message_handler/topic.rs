@@ -96,7 +96,7 @@ impl MessageHandler for Handler {
                             &[channel.name().as_bytes(), &*new_topic],
                             MessageOrigin::User
                         )));
-                        channel.set_topic(new_topic);
+                        channel.set_topic(String::from_utf8_lossy(&*new_topic).into_owned());
 
                     }
                 })
@@ -123,7 +123,7 @@ fn reply_topic(channel: &Channel, client: &Client) {
     match channel.topic() {
         /// TODO fix topic encoding!!
         topic if topic.len() > 0 => client.send_response(
-            RPL_TOPIC, &[channel.name(), &*String::from_utf8_lossy(topic)]
+            RPL_TOPIC, &[channel.name(), topic]
         ),
         _ => client.send_response(
             RPL_NOTOPIC, &[channel.name(), "No topic it set"]

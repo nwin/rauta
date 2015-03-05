@@ -24,6 +24,7 @@ extern crate rand;
 extern crate mio;
 
 pub mod net;
+pub mod services;
 pub mod protocol;
 pub mod server;
 pub mod message_handler;

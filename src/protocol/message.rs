@@ -111,9 +111,14 @@ impl Message {
         self.prefix.as_ref().map(|range| &self.message[*range])
     }
     
-    /// Returns the command part of the message.
+    /// Returns the command of the message.
     pub fn command(&self) -> Option<Command> {
         Command::from_slice(&self.message[self.command])
+    }
+    
+    /// Returns the command part of the message.
+    pub fn command_bytes(&self) -> &[u8] {
+        &self.message[self.command]
     }
     
     /// Returns the parameters of the command.

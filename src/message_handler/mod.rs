@@ -100,10 +100,10 @@ impl<T: ?Sized> CommaSeparated<T> {
     }
 
     /// Generates an iterator over the parameters
-    fn iter<'a>(&'a self, params: Params<'a>) -> ParameterIterator<'a, T> {
+    fn iter<'a>(&'a self, mut params: Params<'a>) -> ParameterIterator<'a, T> {
         ParameterIterator {
             list: self,
-            params: params,
+            params: params.nth(self.index).unwrap(),
             pos: 0,
         }
     }
@@ -120,7 +120,7 @@ impl<T: ?Sized> CommaSeparated<T> {
 #[derive(Debug)]
 pub struct ParameterIterator<'a, T: ?Sized> where T: 'a {
     list: &'a CommaSeparated<T>,
-    params: Params<'a>,
+    params: &'a [u8],
     pos: usize,
 }
 
@@ -150,11 +150,9 @@ impl<'a> Iterator for ParameterIterator<'a, [u8]> {
         use std::mem;
         if let Some(item) = self.list.parameters.get(self.pos) {
             if item != &(0..0) {
-                let res = self.params.nth(self.list.index).map(
-                    |v| &v[*item]
-                );
+                let res = &self.params[*item];
                 self.pos += 1;
-                res
+                Some(res)
             } else {
                 None
             }
