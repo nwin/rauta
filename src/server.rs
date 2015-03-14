@@ -15,6 +15,7 @@ use client_io;
 use message_handler;
 use channel;
 use services::nickserv::NickServ;
+use services::Service;
 
 pub struct Server {
     host: String,
@@ -23,10 +24,10 @@ pub struct Server {
     clients: HashMap<ClientId, Client>,
     nicks: HashMap<String, ClientId>,
     channels: HashMap<String, channel::Proxy>,
-    listener: Option<mio::net::tcp::TcpListener>,
+    listener: Option<mio::tcp::TcpListener>,
     server_tx: Option<EventLoopSender<Event>>,
     client_tx: Option<EventLoopSender<client_io::Event>>,
-    nick_serv: Option<NickServ>,
+    services: HashMap<String, Box<Service>>,
 }
 
 pub enum Event {
@@ -61,7 +62,7 @@ impl Server {
             listener: None,
             server_tx: None,
             client_tx: None,
-            nick_serv: Some(NickServ::new().init()),
+            services: HashMap::new(),
         })
     }
 
@@ -71,7 +72,7 @@ impl Server {
         self.server_tx = Some(server_loop.channel());
         self.client_tx = Some(client_loop.channel());
 		// TODO listen to all IP addresses (move lookup_host to here)
-		self.listener = Some(try!(mio::net::tcp::TcpListener::bind(&*format!("{}:{}", self.ip, self.port))));
+		self.listener = Some(try!(mio::tcp::TcpListener::bind(&*format!("{}:{}", self.ip, self.port))));
 		info!("started listening on {}:{} ({})", self.ip, self.port, self.host);
         try!(server_loop.register(self.listener.as_ref().unwrap(), Token(self.port as usize)));
         let host = Arc::new(self.host.clone());
@@ -141,6 +142,11 @@ impl Server {
         }
     }
 
+    /// Getter for services
+    pub fn get_service(&mut self, name: String) -> &mut Service {
+        &mut *self.services[name]
+    }
+
     /// Getter for tx for sending to main event loop
     /// Panics if the main loop is not started
     pub fn tx(&mut self) ->  &EventLoopSender<Event> {
@@ -148,8 +154,11 @@ impl Server {
     }
 }
 
-impl Handler<(), Event> for Server {
-    fn notify(&mut self, _: &mut EventLoop<(), Event>, msg: Event) {
+impl Handler for Server {
+    type Timeout = ();
+    type Message = Event;
+
+    fn notify(&mut self, _: &mut EventLoop<Server>, msg: Event) {
         use self::Event::*;
         match msg {
             InboundMessage(id, msg) => {
@@ -168,7 +177,7 @@ impl Handler<(), Event> for Server {
             }
         }
     }
-    fn readable(&mut self, _: &mut EventLoop<(), Event>, _: Token, _: mio::ReadHint) {
+    fn readable(&mut self, _: &mut EventLoop<Server>, _: Token, _: mio::ReadHint) {
         if let Ok((stream, _)) = self.listener.as_ref().unwrap().accept() {
             let _ = self.client_tx.as_ref().unwrap().send(client_io::Event::NewConnection(stream));
         } 

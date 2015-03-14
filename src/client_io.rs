@@ -1,4 +1,6 @@
 //! Multi-threaded io loop
+use std::io::prelude::*;
+
 use std::collections::{VecDeque, HashMap};
 use std::error::FromError;
 use std::io::Cursor;
@@ -8,8 +10,8 @@ use std::sync::Arc;
 use std::default::Default;
 
 use mio::{EventLoop, EventLoopSender, Handler, Token, TryRead, TryWrite, PollOpt, Interest};
-use mio::net::tcp::TcpStream;
-use mio::buf::{RingBuf, MutBuf, Buf};
+use mio::tcp::TcpStream;
+use mio::buf::{RingBuf};
 use mio;
 
 use protocol::{Message, Command};
@@ -58,7 +60,7 @@ impl Worker {
 
     /// Registers a new connection
     fn register_connection(&mut self, mut stream: TcpStream, 
-                           event_loop: &mut EventLoop<(), Event>) -> io::Result<ClientId>
+                           event_loop: &mut EventLoop<Worker>) -> io::Result<ClientId>
     {
         let id = try!(ClientId::new(&stream));
         let client_hostname = ::net::get_nameinfo(try!(stream.peer_addr()));
@@ -89,7 +91,7 @@ impl Worker {
         }
     }
 
-    fn unregister_connection(&mut self, token: Token, event_loop: &mut EventLoop<(), Event>) {
+    fn unregister_connection(&mut self, token: Token, event_loop: &mut EventLoop<Worker>) {
         if let Some(stream) = self.streams.remove(&token) {
             let _ = event_loop.deregister(&stream);
         } else {
@@ -102,8 +104,11 @@ impl Worker {
     }
 }
 
-impl Handler<(), Event> for Worker {
-    fn notify(&mut self, event_loop: &mut EventLoop<(), Event>, msg: Event) {
+impl Handler for Worker {
+    type Timeout = ();
+    type Message = Event;
+
+    fn notify(&mut self, event_loop: &mut EventLoop<Worker>, msg: Event) {
         use self::Event::*;
         match msg {
             NewConnection(stream) => {
@@ -133,7 +138,7 @@ impl Handler<(), Event> for Worker {
             }
         }
     }
-    fn readable(&mut self, event_loop: &mut EventLoop<(), Event>, token: Token, hint: mio::ReadHint) {
+    fn readable(&mut self, event_loop: &mut EventLoop<Worker>, token: Token, hint: mio::ReadHint) {
         use protocol::Command::*;
         if hint.is_error() || hint.is_hup() {
             if let Some(client) = self.clients.get(&token) {
@@ -182,7 +187,7 @@ impl Handler<(), Event> for Worker {
             }
         }
     }
-    fn writable(&mut self, _: &mut EventLoop<(), Event>, token: Token) {
+    fn writable(&mut self, _: &mut EventLoop<Worker>, token: Token) {
         if let Some(stream) = self.streams.get_mut(&token) {
             let buffers = &mut self.buffers[token];
             while buffers.len() > 0 {
@@ -190,9 +195,8 @@ impl Handler<(), Event> for Worker {
                 {
                     let buffer = &mut buffers[0];
                     let max_pos = buffer.get_ref().len() as u64;
-                    match stream.write_slice(&*buffer.get_ref()) {
-                        Ok(None) => break,
-                        Ok(Some(bytes)) => {
+                    match stream.write(&*buffer.get_ref()) {
+                        Ok(bytes) => {
                             let new_pos = buffer.position() + bytes as u64;
                             if new_pos == max_pos {
                                 drop_front = true;
@@ -249,13 +253,15 @@ impl MessageReader {
             got_r: false
         }
     }
-    fn feed<R: TryRead>(&mut self, r: &mut R) -> io::Result<&mut MessageReader> {
-        try!(r.read(&mut self.buf.writer()));
+    fn feed<R: Read>(&mut self, r: &mut R) -> io::Result<&mut MessageReader> {
+        use mio::buf::MutBuf;
+        try!(r.read(&mut self.buf.mut_bytes()));
         Ok(self)
     }
 
     fn clear_error(&mut self) {
-        let mut reader = self.buf.reader();
+        use mio::buf::Buf;
+        let reader = &mut self.buf;
         let mut got_r = false;
         if self.error {
             let mut i = 0;
@@ -280,10 +286,11 @@ impl Iterator for MessageReader {
     type Item = Result<Vec<u8>, MessageError>;
 
     fn next(&mut self) -> Option<Result<Vec<u8>, MessageError>> {
+        use mio::buf::Buf;
         use self::MessageError::*;
         self.clear_error();
         let capacity = self.capacity;
-        let mut reader = self.buf.reader();
+        let mut reader = &mut self.buf;
         let mut i = 0;
         let mut result = Ok(None);
         for (j, &b) in reader.bytes().iter().enumerate() {

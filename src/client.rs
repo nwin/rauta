@@ -20,7 +20,7 @@ pub struct ClientId {
 impl ClientId {
     /// The client id is losely inspired by SILC but the silc
     /// method of also using the nickname for this is not applicable to IRC
-    pub fn new(stream: &mio::net::tcp::TcpStream) -> io::Result<ClientId> {
+    pub fn new(stream: &mio::tcp::TcpStream) -> io::Result<ClientId> {
         Ok(ClientId { 
             id: [
                 (match try!(stream.socket_addr()).ip() {
