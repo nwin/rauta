@@ -1,6 +1,7 @@
 //! IRC services
 //! NickServ service
 use std::str;
+use std::any::Any;
 use std::ascii::AsciiExt;
 use std::collections::HashMap;
 
@@ -47,14 +48,14 @@ pub enum Necessity {
 }
 pub use self::Necessity::*;
 
-pub struct Command<Service> {
+pub struct Command {
 	name: String,
 	args: Vec<Argument>,
-	action: fn(&mut Service, &Client, args: HashMap<String, String>),
+	action: fn(&mut Any, &Client, args: HashMap<String, String>),
 }
 
-impl<Service> Command<Service> {
-	fn new(name: &str, action: fn(&mut Service, &Client, HashMap<String, String>)) -> Command<Service> {
+impl Command {
+	fn new(name: &str, action: fn(&mut Any, &Client, HashMap<String, String>)) -> Command {
 		Command {
 			name: name.to_string(),
 			args: Vec::new(),
@@ -88,20 +89,16 @@ impl<Service> Command<Service> {
 		Ok(args)
 	}
 
-	pub fn add_arg(mut self, name: &str, arg_type: Necessity) -> Command<Service> {
+	pub fn add_arg(mut self, name: &str, arg_type: Necessity) -> Command {
 		self.args.push(Argument::new(name, arg_type));
 		self
 	}
 }
 
-
-pub trait Service: HasCommands {
-	fn got_command(&self);
-}
-
-pub trait HasCommands: Sized {
-	fn add_command(&mut self, Command<Self>);
-	fn commands(&self) -> &[Command<Self>];
+pub trait Service {
+	fn add_command(&mut self, Command);
+	fn commands(&self) -> &[Command];
+	fn borrow_mut(&mut self) -> &mut Any;
 
 	fn process_message(&mut self, message: Message, client: &Client) {
 		match message.command() {
@@ -114,16 +111,20 @@ pub trait HasCommands: Sized {
 					}
 				} else {
 					None
-				}.map(|(action, args)| action(self, &client, args));
+				}.map(|(action, args)| action(self.borrow_mut(), &client, args));
 			}
 			_ => (),
 		}
 	}
-	fn find_command(&self, cmd: &[u8]) -> Option<&Command<Self>> {
+	fn find_command(&self, cmd: &[u8]) -> Option<&Command> {
 		if let Some(cmd) = str::from_utf8(cmd).ok().map(|v| v.to_ascii_uppercase()) {
 			self.commands().iter().find(|c| c.name == cmd)
 		} else {
 			None
 		}
 	}
+}
+
+fn test() {
+	let _foo: Box<Service> = box nickserv::NickServ::new();
 }

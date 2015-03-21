@@ -1,5 +1,6 @@
 //! NickServ service
 use std::str;
+use std::any::Any;
 use std::ascii::AsciiExt;
 use std::collections::HashMap;
 
@@ -10,15 +11,18 @@ use protocol::Command::{PRIVMSG};
 use super::*;
 
 pub struct NickServ {
-	commands: Vec<Command<NickServ>>
+	commands: Vec<Command>
 }
 
-impl HasCommands for NickServ {
-	fn add_command(&mut self, cmd: Command<Self>) {
+impl Service for NickServ {
+	fn add_command(&mut self, cmd: Command) {
 		self.commands.push(cmd);
 	}
-	fn commands<'a>(&'a self) -> &[Command<Self>] {
+	fn commands<'a>(&'a self) -> &[Command] {
 		&*self.commands
+	}
+	fn borrow_mut(&mut self) -> &mut Any {
+		self
 	}
 }
 
@@ -37,7 +41,9 @@ impl NickServ {
 		self
 	}
 
-	fn register(&mut self, _: &Client, _: HashMap<String, String>) {
+	fn register(this: &mut Any, _: &Client, _: HashMap<String, String>) {
+		if let Some(mut this) = this.downcast_ref::<Self>() {
 
+		}
 	}
 }

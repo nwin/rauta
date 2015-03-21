@@ -1,4 +1,5 @@
 use std::sync::Arc;
+use std::mem;
 
 use protocol::{ResponseCode, Message};
 use protocol::ResponseCode::*;
@@ -88,19 +89,31 @@ impl MessageHandler for Handler {
                     &[name, "No such nick/channel"]
                 )}
             },
-            Receiver::Nick(ref nick) => match server.client_with_name(&nick) {
-                Some(subject) => {
-                    
-                    subject.send_raw(match msg {
-                        Some(msg) => client.build_raw_msg(PRIVMSG, &[nick.as_bytes(), msg], MessageOrigin::User),
-                        None => client.build_msg(PRIVMSG, &[nick], MessageOrigin::User),
-                    })
-                    
-                },
-                None => if ! self.is_notice() { client.send_response(
-                    ERR_NOSUCHNICK,
-                    &[nick, "No such nick/channel"]
-                )}
+            Receiver::Nick(ref nick) => match Some(server.get_service(nick.to_string())) {
+                Some(service) => (),//service.process_message(self.msg, &client),
+                None => {
+                    // Issue 6393
+                    match unsafe{mem::transmute::<_, &Server>(server as *const Server)}.client_with_name(&nick) {
+                        Some(subject) => {
+                            subject.send_raw(match msg {
+                                Some(msg) => client.build_raw_msg(
+                                    PRIVMSG, 
+                                    &[nick.as_bytes(), msg], 
+                                    MessageOrigin::User
+                                ),
+                                None => client.build_msg(
+                                    PRIVMSG, 
+                                    &[nick], 
+                                    MessageOrigin::User
+                                ),
+                            })
+                        },
+                        None => if ! self.is_notice() { client.send_response(
+                            ERR_NOSUCHNICK,
+                            &[nick, "No such nick/channel"]
+                        )}
+                    }
+                }
             }
         }
     }
