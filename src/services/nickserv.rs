@@ -4,11 +4,18 @@ use std::any::Any;
 use std::ascii::AsciiExt;
 use std::collections::HashMap;
 
+use super::sqlite3::{
+    DatabaseConnection,
+    SqliteResult,
+};
+
 use client::Client;
+use server::Server;
 use protocol::{Params, Message};
 use protocol::Command::{PRIVMSG};
 
-use super::*;
+use super::{Command, Service, ServiceError, Action};
+use super::{Obligatory, Text, Email};
 
 pub struct NickServ {
 	commands: Vec<Command>
@@ -41,9 +48,10 @@ impl NickServ {
 		self
 	}
 
-	fn register(this: &mut Any, _: &Client, _: HashMap<String, String>) {
+	fn register<'a>(this: &mut Any, server: &'a mut Server, client: &Client, args: HashMap<String, String>) -> Action<'a> {
 		if let Some(mut this) = this.downcast_ref::<Self>() {
 
 		}
+		Action::Continue(server)
 	}
 }

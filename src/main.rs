@@ -42,5 +42,5 @@ fn main() {
 
     let server = box server::Server::new("localhost");
 
-    let _ = server.map(|mut s| s.run_mio()).unwrap();
+    let _ = server.map(|mut s| s.run_mio()).ok().unwrap();
 }

@@ -2,20 +2,46 @@
 //! NickServ service
 use std::str;
 use std::any::Any;
+use std::error::{Error, FromError};
 use std::ascii::AsciiExt;
 use std::collections::HashMap;
 
 use mio::Handler;
 
+extern crate sqlite3;
+
+use self::sqlite3::{
+    DatabaseConnection,
+    SqliteError,
+};
+
 use client::Client;
+use server::Server;
 use client_io::Event;
 use protocol::{Params, Message};
 use protocol::Command::{PRIVMSG};
 
-//pub use self::nickserv::NickServ;
+mod nickserv;
+pub use self::nickserv::NickServ;
 
-pub mod nickserv;
+/// Service error
+pub enum ServiceError {
+	DB(SqliteError)
+}
 
+impl FromError<SqliteError> for ServiceError {
+	fn from_error(err: SqliteError) -> Self {
+		ServiceError::DB(err)
+	}
+}
+
+/// Determines how to proceed after an service event handler has been processed
+pub enum Action<'a> {
+	Continue(&'a mut Server),
+	Stop,
+}
+
+/// Service command argument
 pub struct Argument {
 	name: String,
 	arg_type: Necessity,
@@ -30,8 +56,11 @@ impl Argument {
 	}
 }
 
+/// Service command argument type
 pub enum ArgType {
+	/// Text argument
 	Text,
+	/// Email address
 	Email
 }
 pub use self::ArgType::*;
@@ -42,20 +71,26 @@ impl ArgType {
 	}
 }
 
+/// Determines the necessity of the argument
 pub enum Necessity {
+	/// The argument is facultative
 	Optional(ArgType),
+	/// The argument is compulsory
 	Obligatory(ArgType)
 }
 pub use self::Necessity::*;
 
+type ActionFn = for <'a> fn(&mut Any, &'a mut Server, &Client, args: HashMap<String, String>) -> Action<'a>;
+
+/// IRC service command
 pub struct Command {
 	name: String,
 	args: Vec<Argument>,
-	action: fn(&mut Any, &Client, args: HashMap<String, String>),
+	action: ActionFn,
 }
 
 impl Command {
-	fn new(name: &str, action: fn(&mut Any, &Client, HashMap<String, String>)) -> Command {
+	fn new(name: &str, action: ActionFn) -> Command {
 		Command {
 			name: name.to_string(),
 			args: Vec::new(),
@@ -63,6 +98,7 @@ impl Command {
 		}
 	}
 
+	/// Parses the command args and returns a HashMap containing at least the obligatory arguments
 	pub fn parse_args(&self, params: &mut Params) -> Result<HashMap<String, String>, ()> {
 		let mut args = HashMap::new();
 		for arg in self.args.iter() {
@@ -89,31 +125,38 @@ impl Command {
 		Ok(args)
 	}
 
+	/// Adds an argument to the command
 	pub fn add_arg(mut self, name: &str, arg_type: Necessity) -> Command {
 		self.args.push(Argument::new(name, arg_type));
 		self
 	}
 }
 
+/// Trait for IRC services
 pub trait Service {
 	fn add_command(&mut self, Command);
 	fn commands(&self) -> &[Command];
 	fn borrow_mut(&mut self) -> &mut Any;
 
-	fn process_message(&mut self, message: Message, client: &Client) {
+	fn process_message<'a>(&mut self, message: &Message, server: &'a mut Server, client: &Client) -> Action<'a> {
 		match message.command() {
 			Some(PRIVMSG) => {
 				let mut params = message.params();
-				if let Some(cmd) = params.next().and_then(|s| self.find_command(s)) {
+				let handler = if let Some(cmd) = params.next().and_then(|s| self.find_command(s)) {
 					match cmd.parse_args(&mut params) {
 						Ok(args) => Some((cmd.action, args)),
 						Err(()) => None
 					}
 				} else {
 					None
-				}.map(|(action, args)| action(self.borrow_mut(), &client, args));
+				};
+				if let Some((action, args)) = handler {
+					action(self.borrow_mut(), server, &client, args)
+				} else {
+					Action::Continue(server)
+				}
 			}
-			_ => (),
+			_ => Action::Continue(server),
 		}
 	}
 	fn find_command(&self, cmd: &[u8]) -> Option<&Command> {

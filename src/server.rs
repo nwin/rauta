@@ -2,6 +2,8 @@
 
 use std::io;
 use std::net;
+use std::cell::RefCell;
+use std::rc::Rc;
 use std::sync::Arc;
 use std::thread::spawn;
 use std::collections::HashMap;
@@ -14,8 +16,7 @@ use client::{ClientId, Client, MessageOrigin};
 use client_io;
 use message_handler;
 use channel;
-use services::nickserv::NickServ;
-use services::Service;
+use services::{Service, NickServ, Action};
 
 pub struct Server {
     host: String,
@@ -27,7 +28,7 @@ pub struct Server {
     listener: Option<mio::tcp::TcpListener>,
     server_tx: Option<EventLoopSender<Event>>,
     client_tx: Option<EventLoopSender<client_io::Event>>,
-    services: HashMap<String, Box<Service>>,
+    services: HashMap<String, Rc<RefCell<Box<Service>>>>,
 }
 
 pub enum Event {
@@ -73,7 +74,7 @@ impl Server {
         self.client_tx = Some(client_loop.channel());
 		// TODO listen to all IP addresses (move lookup_host to here)
 		self.listener = Some(try!(mio::tcp::TcpListener::bind(&*format!("{}:{}", self.ip, self.port))));
-		info!("started listening on {}:{} ({})", self.ip, self.port, self.host);
+		println!("started listening on {}:{} ({})", self.ip, self.port, self.host);
         try!(server_loop.register(self.listener.as_ref().unwrap(), Token(self.port as usize)));
         let host = Arc::new(self.host.clone());
         let tx = server_loop.channel();
@@ -143,8 +144,13 @@ impl Server {
     }
 
     /// Getter for services
-    pub fn get_service(&mut self, name: String) -> &mut Service {
-        &mut *self.services[name]
+    pub fn with_service<'a, F>(&'a mut self, name: String, mut f: F) -> Action<'a>
+    where F: FnMut(&mut Service, &'a mut Server) -> Action<'a> {
+        if let Some(service) = self.services.get(&name).map(|v| v.clone()) {
+            f(&mut **service.borrow_mut(), self)
+        } else {
+            Action::Continue(self)
+        }
     }
 
     /// Getter for tx for sending to main event loop
