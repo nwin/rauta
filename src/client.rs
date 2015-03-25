@@ -23,23 +23,23 @@ impl ClientId {
     pub fn new(stream: &mio::tcp::TcpStream) -> io::Result<ClientId> {
         Ok(ClientId { 
             id: [
-                (match try!(stream.socket_addr()).ip() {
-                    net::IpAddr::V4(addr) => {
-                        let [a, b, c, d] = addr.octets();
+                (match try!(stream.socket_addr()) {
+                    net::SocketAddr::V4(addr) => {
+                        let [a, b, c, d] = addr.ip().octets();
                         (a as u32) <<24 | (b as u32)<<16 | (c as u32)<<8 | d as u32
                     },
-                    net::IpAddr::V6(addr) => {
-                        let [_, _, _, _, _, _, a, b] = addr.segments();
+                    net::SocketAddr::V6(addr) => {
+                        let [_, _, _, _, _, _, a, b] = addr.ip().segments();
                         (a as u32)  << 16 | b as u32
                     },
                 } as u64) << 32
-                | match try!(stream.peer_addr()).ip() {
-                    net::IpAddr::V4(addr) => {
-                        let [a, b, c, d] = addr.octets();
+                | match try!(stream.peer_addr()) {
+                    net::SocketAddr::V4(addr) => {
+                        let [a, b, c, d] = addr.ip().octets();
                         (a as u32) <<24 | (b as u32)<<16 | (c as u32)<<8 | d as u32
                     },
-                    net::IpAddr::V6(addr) => {
-                        let [_, _, _, _, _, _, a, b] = addr.segments();
+                    net::SocketAddr::V6(addr) => {
+                        let [_, _, _, _, _, _, a, b] = addr.ip().segments();
                         (a as u32)  << 16 | b as u32
                     },
                 } as u64, 

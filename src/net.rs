@@ -74,13 +74,12 @@ fn new_sockaddr_in6(port: u16, addr: in6_addr) -> sockaddr_in6 {
 /// TODO: make this safe, see manpage
 const HOSTLEN: usize = 80;
 pub fn get_nameinfo(peer_socket: net::SocketAddr) -> String {
-    let ip = peer_socket.ip();
     let port = peer_socket.port();
     let mut buf = [0; HOSTLEN];
     let _ = unsafe {
-        match ip {
-            net::IpAddr::V4(addr) => {
-                let [a, b, c, d] = addr.octets();
+        match peer_socket {
+            net::SocketAddr::V4(addr) => {
+                let [a, b, c, d] = addr.ip().octets();
                 let addr = in_addr {
                     s_addr: (a as u32) << 24 
                           | (b as u32) << 16 
@@ -91,8 +90,8 @@ pub fn get_nameinfo(peer_socket: net::SocketAddr) -> String {
                 getnameinfo(transmute(&sockaddr), size_of::<sockaddr_in>() as socklen_t, 
                             buf.as_mut_ptr() as *mut i8, HOSTLEN as u32, transmute(0usize), 0, 0)
             },
-            net::IpAddr::V6(addr) => {
-                let [a, b, c, d, e, f, g, h] = addr.segments();
+            net::SocketAddr::V6(addr) => {
+                let [a, b, c, d, e, f, g, h] = addr.ip().segments();
                 let addr = in6_addr {
                     s6_addr: [a, b, c, d, e, f, g, h]
                 };

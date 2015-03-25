@@ -44,7 +44,7 @@ impl Server {
         let addresses = try!(net::lookup_host(host));
         // Listen only on ipv4 for now…
         let ip = match addresses.filter_map(|v| v.ok()).filter(
-            |&v| match v.ip() { net::IpAddr::V4(_) => true, _ => false }
+            |&v| match v { net::SocketAddr::V4(_) => true, _ => false }
         ).nth(0) {
             Some(ip) => ip,
             None => return Err(io::Error::new(
@@ -74,7 +74,7 @@ impl Server {
         self.client_tx = Some(client_loop.channel());
 		// TODO listen to all IP addresses (move lookup_host to here)
 		self.listener = Some(try!(mio::tcp::TcpListener::bind(&*format!("{}:{}", self.ip, self.port))));
-		println!("started listening on {}:{} ({})", self.ip, self.port, self.host);
+		info!("started listening on {}:{} ({})", self.ip, self.port, self.host);
         try!(server_loop.register(self.listener.as_ref().unwrap(), Token(self.port as usize)));
         let host = Arc::new(self.host.clone());
         let tx = server_loop.channel();
