@@ -59,7 +59,7 @@ impl MessageHandler for Handler {
                 }),
                 None => client.send_response(
                     ERR_NOSUCHCHANNEL,
-                    &[name.as_slice(), "No such channel"]
+                    &[&name, "No such channel"]
                 )
             },
             Receiver::Nick(_) => error!("user modes not supported yet")
@@ -171,7 +171,7 @@ pub fn handle_mode(channel: &mut channel::Channel, client: Client, message: Mess
                         };
                         match nick {
                             Some(nick) => broadcast_change(
-                                channel, &client, action, mode, Some(nick.as_slice())
+                                channel, &client, action, mode, Some(&nick)
                             ),
                             None => {}
                         }
@@ -194,7 +194,7 @@ pub fn handle_mode(channel: &mut channel::Channel, client: Client, message: Mess
                             channel.set_limit(Some(limit));
                             broadcast_change(
                                 channel, &client, action, mode, 
-                                Some(limit.to_string().as_slice())
+                                Some(&limit.to_string())
                             )
                         },
                         _ => {}
@@ -246,7 +246,7 @@ pub fn handle_mode(channel: &mut channel::Channel, client: Client, message: Mess
         // TODO secret channel??
         // TODO things with parameters?
         client.send_response(RPL_CHANNELMODEIS,
-            &[channel.name(), ("+".to_string() + &*channel.flags()).as_slice()]
+            &[channel.name(), &("+".to_string() + &*channel.flags())]
         )
     }
 }

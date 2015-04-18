@@ -8,8 +8,7 @@ use std::sync::Arc;
 use std::thread::spawn;
 use std::collections::HashMap;
 
-use mio::{EventLoopSender, EventLoop, Handler, Token};
-use mio;
+use mio::{self, EventLoop, Handler, Token};
 
 use protocol::{Command, ResponseCode, Message};
 use client::{ClientId, Client, MessageOrigin};
@@ -20,14 +19,13 @@ use services::{Service, NickServ, Action};
 
 pub struct Server {
     host: String,
-    ip: String,
-    port: u16,
+    socket_addr: net::SocketAddr,
     clients: HashMap<ClientId, Client>,
     nicks: HashMap<String, ClientId>,
     channels: HashMap<String, channel::Proxy>,
     listener: Option<mio::tcp::TcpListener>,
-    server_tx: Option<EventLoopSender<Event>>,
-    client_tx: Option<EventLoopSender<client_io::Event>>,
+    server_tx: Option<mio::Sender<Event>>,
+    client_tx: Option<mio::Sender<client_io::Event>>,
     services: HashMap<String, Rc<RefCell<Box<Service>>>>,
 }
 
@@ -43,20 +41,22 @@ impl Server {
     pub fn new(host: &str) -> io::Result<Server> {
         let addresses = try!(net::lookup_host(host));
         // Listen only on ipv4 for now…
-        let ip = match addresses.filter_map(|v| v.ok()).filter(
-            |&v| match v { net::SocketAddr::V4(_) => true, _ => false }
-        ).nth(0) {
-            Some(ip) => ip,
+        let addr = match addresses.filter_map(|v| v.ok()).filter_map(
+            |v| match v { 
+                net::SocketAddr::V4(addr) => {
+                    Some(net::SocketAddr::V4(net::SocketAddrV4::new(*addr.ip(), 6667)))
+                }
+                _ => None 
+        }).nth(0) {
+            Some(addr) => addr,
             None => return Err(io::Error::new(
                 io::ErrorKind::Other,
-                "Cannot get host IP address.",
-                None
+                "Cannot get host IP address."
             ))
         };
         Ok(Server {
             host: host.to_string(),
-            ip: format!("{}", ip),
-            port: 6667,
+            socket_addr: addr,
             clients: HashMap::new(),
             nicks: HashMap::new(),
             channels: HashMap::new(),
@@ -73,9 +73,9 @@ impl Server {
         self.server_tx = Some(server_loop.channel());
         self.client_tx = Some(client_loop.channel());
 		// TODO listen to all IP addresses (move lookup_host to here)
-		self.listener = Some(try!(mio::tcp::TcpListener::bind(&*format!("{}:{}", self.ip, self.port))));
-		info!("started listening on {}:{} ({})", self.ip, self.port, self.host);
-        try!(server_loop.register(self.listener.as_ref().unwrap(), Token(self.port as usize)));
+		self.listener = Some(try!(mio::tcp::TcpListener::bind(self.socket_addr)));//&*format!("{}:{}", self.ip, self.port))));
+		info!("started listening on {} ({})", self.socket_addr, self.host);
+        try!(server_loop.register(self.listener.as_ref().unwrap(), Token(self.socket_addr.port() as usize)));
         let host = Arc::new(self.host.clone());
         let tx = server_loop.channel();
         spawn(move || {
@@ -155,7 +155,7 @@ impl Server {
 
     /// Getter for tx for sending to main event loop
     /// Panics if the main loop is not started
-    pub fn tx(&mut self) ->  &EventLoopSender<Event> {
+    pub fn tx(&mut self) ->  &mio::Sender<Event> {
         self.server_tx.as_ref().unwrap()
     }
 }

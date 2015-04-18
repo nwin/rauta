@@ -2,17 +2,16 @@
 use std::io::prelude::*;
 
 use std::collections::{VecDeque, HashMap};
-use std::error::FromError;
+use std::convert::From;
 use std::io::Cursor;
 use std::io;
 use std::mem;
 use std::sync::Arc;
 use std::default::Default;
 
-use mio::{EventLoop, EventLoopSender, Handler, Token, TryRead, TryWrite, PollOpt, Interest};
+use mio::{self, EventLoop, Handler, Token, TryRead, TryWrite, PollOpt, Interest};
 use mio::tcp::TcpStream;
 use mio::buf::{RingBuf};
-use mio;
 
 use protocol::{Message, Command};
 use protocol::ResponseCode::*;
@@ -40,14 +39,14 @@ pub struct Worker {
     clients: HashMap<Token, Client>,
     readers: HashMap<Token, MessageReader>,
     buffers: HashMap<Token, VecDeque<Cursor<Vec<u8>>>>,
-    server_tx: EventLoopSender<server::Event>,
+    server_tx: mio::Sender<server::Event>,
     host: Arc<String>
 
 }
 
 impl Worker {
     /// Constructs a new worker
-    pub fn new(tx: EventLoopSender<server::Event>, host: Arc<String>) -> Worker {
+    pub fn new(tx: mio::Sender<server::Event>, host: Arc<String>) -> Worker {
         Worker {
             streams: HashMap::new(),
             clients: HashMap::new(),
@@ -85,22 +84,21 @@ impl Worker {
         } else {
             Err(io::Error::new(
                 io::ErrorKind::Other,
-                "Failed to register stream in event loop.",
-                None
+                "Failed to register stream in event loop."
             ))
         }
     }
 
-    fn unregister_connection(&mut self, token: Token, event_loop: &mut EventLoop<Worker>) {
-        if let Some(stream) = self.streams.remove(&token) {
+    fn unregister_connection(&mut self, token: &Token, event_loop: &mut EventLoop<Worker>) {
+        if let Some(stream) = self.streams.remove(token) {
             let _ = event_loop.deregister(&stream);
         } else {
             return // connection already closed
         }
         let _ = self.server_tx.send(server::Event::Disconnected(self.clients[token].clone()));
-        self.readers.remove(&token);
-        self.clients.remove(&token);
-        self.buffers.remove(&token);
+        self.readers.remove(token);
+        self.clients.remove(token);
+        self.buffers.remove(token);
     }
 }
 
@@ -116,24 +114,26 @@ impl Handler for Worker {
                 let _ = self.register_connection(stream, event_loop);
             },
             Disconnect(id) => {
-                self.unregister_connection(id.token(), event_loop);
+                self.unregister_connection(&id.token(), event_loop);
             },
             Shutdown => {
                 event_loop.shutdown()
             },
             Message(id, vec) => {
-                debug!(" sending message {}", String::from_utf8_lossy(vec.as_slice()));
-                if self.buffers.contains_key(&id.token()) {
-                    self.buffers[id.token()].push_back(Cursor::new(vec));
-                    self.writable(event_loop, id.token())
+                debug!(" sending message {}", String::from_utf8_lossy(&vec));
+                let token = id.token();
+                if self.buffers.contains_key(&token) {
+                    self.buffers.get_mut(&token).unwrap().push_back(Cursor::new(vec));
+                    self.writable(event_loop, token)
                 }
             },
             SharedMessage(id, vec) => {
-                debug!(" sending message {}", String::from_utf8_lossy(vec.as_slice()));
+                debug!(" sending message {}", String::from_utf8_lossy(&vec));
                 // TODO do not clone, Cursor should also work for soon
-                if self.buffers.contains_key(&id.token()) {
-                    self.buffers[id.token()].push_back(Cursor::new((*vec).clone()));
-                    self.writable(event_loop, id.token())
+                let token = id.token();
+                if self.buffers.contains_key(&token) {
+                    self.buffers.get_mut(&token).unwrap().push_back(Cursor::new((*vec).clone()));
+                    self.writable(event_loop, token)
                 }
             }
         }
@@ -149,8 +149,8 @@ impl Handler for Worker {
             }
         } else {
             if let Some(stream) = self.streams.get_mut(&token) {
-                let reader = &mut self.readers[token];
-                let client = &self.clients[token];
+                let reader = &mut self.readers.get_mut(&token).unwrap();
+                let client = &self.clients[&token];
                 match reader.feed(stream) {
                     Ok(messages) => for message in messages {
                         match message.map(|m| Message::new(m)) {
@@ -189,7 +189,7 @@ impl Handler for Worker {
     }
     fn writable(&mut self, _: &mut EventLoop<Worker>, token: Token) {
         if let Some(stream) = self.streams.get_mut(&token) {
-            let buffers = &mut self.buffers[token];
+            let buffers = &mut self.buffers.get_mut(&token).unwrap();
             while buffers.len() > 0 {
                 let mut drop_front = false;
                 {
@@ -222,8 +222,8 @@ enum MessageError {
     IoError(io::Error)
 }
 
-impl FromError<io::Error> for MessageError {
-    fn from_error(err: io::Error) -> MessageError {
+impl From<io::Error> for MessageError {
+    fn from(err: io::Error) -> MessageError {
         MessageError::IoError(err)
     }
 }
@@ -265,7 +265,7 @@ impl MessageReader {
         let mut got_r = false;
         if self.error {
             let mut i = 0;
-            for (j, &b) in reader.bytes().iter().enumerate() {
+            for (j, &b) in (reader as &mut Buf).bytes().iter().enumerate() {
                 if b == b'\r' {
                     i = j + 1;
                     got_r = true
@@ -293,7 +293,7 @@ impl Iterator for MessageReader {
         let mut reader = &mut self.buf;
         let mut i = 0;
         let mut result = Ok(None);
-        for (j, &b) in reader.bytes().iter().enumerate() {
+        for (j, &b) in (reader as &mut Buf).bytes().iter().enumerate() {
             let res = match b {
                 // Message may not include \r or \n thus now he message end is reached
                 b'\r' => {

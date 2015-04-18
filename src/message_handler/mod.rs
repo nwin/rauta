@@ -150,7 +150,7 @@ impl<'a> Iterator for ParameterIterator<'a, [u8]> {
         use std::mem;
         if let Some(item) = self.list.parameters.get(self.pos) {
             if item != &(0..0) {
-                let res = &self.params[*item];
+                let res = &self.params[item.clone()];
                 self.pos += 1;
                 Some(res)
             } else {

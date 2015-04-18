@@ -51,11 +51,13 @@ impl MessageHandler for Handler {
     fn invoke(self, server: &mut Server, client: Client) {
         use user::Status::*;
         let nick = self.nick();
+        // Bypass borrow checker because of Rust issue #6393
+        let server_ptr = server as *mut Server;
         // Note RFC issue #690, string has to be cloned twice now…
         // TODO: handle renames delete old entries and convert to lower case first
         match server.nicks_mut().entry(nick.to_string()) {
-            // Unsafe reborrows because of Rust issue #6393
-            Occupied(_) => unsafe {(&*(server as *mut Server))}.send_response(
+            // Unsafe reborrow because of Rust issue #6393
+            Occupied(_) => unsafe {&*server_ptr}.send_response(
                 &client, ERR_NICKNAMEINUSE,
                 &[nick, "Nickname is already in use"]
             ),
@@ -69,7 +71,8 @@ impl MessageHandler for Handler {
                 match status {
                     NameRegistered => {
                         {client.info_mut().set_status(Registered)}
-                        unsafe {&*(server as *mut Server)}.register(&client)
+                        // Unsafe reborrow because of Rust issue #6393
+                        unsafe {&*server_ptr}.register(&client)
                     },
                     Negotiating(&NameRegistered) => {
                         client.info_mut().set_status(user::STATUS_NEG_REG)

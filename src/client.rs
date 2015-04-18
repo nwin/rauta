@@ -23,7 +23,7 @@ impl ClientId {
     pub fn new(stream: &mio::tcp::TcpStream) -> io::Result<ClientId> {
         Ok(ClientId { 
             id: [
-                (match try!(stream.socket_addr()) {
+                (match try!(stream.local_addr()) {
                     net::SocketAddr::V4(addr) => {
                         let [a, b, c, d] = addr.ip().octets();
                         (a as u32) <<24 | (b as u32)<<16 | (c as u32)<<8 | d as u32
@@ -65,12 +65,12 @@ pub struct Client {
     id: ClientId,
     info: Arc<RwLock<User>>,
     hostname: Arc<String>,
-    channel: mio::EventLoopSender<client_io::Event>, 
+    channel: mio::Sender<client_io::Event>, 
 }
 
 impl Client {
     /// Initialized client communication
-    pub fn new(id: ClientId, user: User, tx: mio::EventLoopSender<client_io::Event>, hostname: Arc<String>) -> Client {
+    pub fn new(id: ClientId, user: User, tx: mio::Sender<client_io::Event>, hostname: Arc<String>) -> Client {
         Client {
             id: id,
             info: Arc::new(RwLock::new(user)),

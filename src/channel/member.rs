@@ -131,27 +131,27 @@ impl Member {
     /// @ for op
     /// v for voice
     pub fn decorated_nick(&self) -> &str {
-        return self.decorated_nick.as_slice()
+        return &self.decorated_nick
     }
     
     /// Getter for nick
     pub fn nick(&self) -> &str {
-        return self.nick.as_slice()
+        return &self.nick
     }
     
     /// Getter for host
     pub fn hostname(&self) -> &str {
-        return self.hostname.as_slice()
+        return &self.hostname
     }
     
     /// Getter for username
     pub fn username(&self) -> &str {
-        return self.username.as_slice()
+        return &self.username
     }
     
     /// Getter for realname
     pub fn realname(&self) -> &str {
-        return self.realname.as_slice()
+        return &self.realname
     }
     
     /// Setter for nick

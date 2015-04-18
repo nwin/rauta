@@ -108,17 +108,17 @@ impl Message {
     /// Returns the message prefix
     /// It might contain non-utf8 chars and thus only bytes are returned.
     pub fn prefix(&self) -> Option<&[u8]> {
-        self.prefix.as_ref().map(|range| &self.message[*range])
+        self.prefix.as_ref().map(|range| &self.message[range.clone()])
     }
     
     /// Returns the command of the message.
     pub fn command(&self) -> Option<Command> {
-        Command::from_slice(&self.message[self.command])
+        Command::from_slice(&self.message[self.command.clone()])
     }
     
     /// Returns the command part of the message.
     pub fn command_bytes(&self) -> &[u8] {
-        &self.message[self.command]
+        &self.message[self.command.clone()]
     }
     
     /// Returns the parameters of the command.
@@ -172,7 +172,7 @@ impl<'a> Iterator for Params<'a> {
     fn next(&mut self) -> Option<&'a [u8]> {
         self.msg.params.get(self.i).map( |range| {
             self.i += 1;
-            &self.msg.message[*range]
+            &self.msg.message[range.clone()]
         })
     }
 }

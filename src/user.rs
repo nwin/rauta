@@ -1,7 +1,7 @@
 //! User model
 use std::mem;
 
-#[derive(Debug, PartialEq, Copy)]
+#[derive(Debug, PartialEq, Copy, Clone)]
 pub enum Status {
     /// User is not connected
 	Disconnected,
@@ -129,7 +129,7 @@ impl HostMask {
     /// "*!*@*.com" would match "a!b@example.com"
     pub fn matches(&self, mask: &str) -> bool {
         let mut mask_chars = mask.chars().peekable();
-        let mut chars = self.mask.as_slice().chars().peekable();
+        let mut chars = self.mask.chars().peekable();
         loop {
             match chars.next() {
                 Some('*') => match chars.peek() {
@@ -152,22 +152,22 @@ impl HostMask {
     
     /// Returns the hostname
     pub fn host(&self) -> Option<&str> {
-        self.mask.as_slice().split('@').last()
+        self.mask.split('@').last()
     }
     /// Returns the username
     pub fn user(&self) -> Option<&str> {
-        self.mask.as_slice().split('@').nth(0).and_then(|v| 
+        self.mask.split('@').nth(0).and_then(|v| 
             v.split('!').last()
         )
     }
     /// Returns the nickname
     pub fn nick(&self) -> Option<&str> {
-        self.mask.as_slice().split('!').nth(0)
+        self.mask.split('!').nth(0)
     }
     
     /// Returns a view into the mask
     pub fn as_str(&self) -> &str {
-        return self.mask.as_slice()
+        return &self.mask
     }
 }
 

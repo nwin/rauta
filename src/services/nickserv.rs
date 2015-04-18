@@ -4,11 +4,6 @@ use std::any::Any;
 use std::ascii::AsciiExt;
 use std::collections::HashMap;
 
-use super::sqlite3::{
-    DatabaseConnection,
-    SqliteResult,
-};
-
 use client::Client;
 use server::Server;
 use protocol::{Params, Message};

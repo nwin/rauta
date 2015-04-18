@@ -15,6 +15,8 @@
 #![allow(unused_imports)]
 #![allow(unused_features)]
 #![allow(missing_docs)]
+#![feature(slice_patterns)]
+#![feature(lookup_host)]
 
 #[macro_use]
 extern crate log;

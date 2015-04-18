@@ -1,13 +1,13 @@
 //! Channel model
 
+use std::boxed::FnBox;
 use std::collections::{HashMap, HashSet};
 use std::collections::hash_map;
 use std::sync::mpsc::{Sender, channel};
 use std::sync::Arc;
 use std::thread::spawn;
-use std::thunk::Invoke;
 
-use mio::EventLoopSender;
+use mio;
 
 use server;
 use protocol::ResponseCode;
@@ -23,12 +23,12 @@ use super::{Member, Flags, ChannelMode};
 /// Forwards the message to a channel
 pub struct Proxy {
     tx: Sender<Event>,
-    server_tx: EventLoopSender<server::Event>
+    server_tx: mio::Sender<server::Event>
 }
 
 impl Proxy {
     fn new(tx: Sender<Event>, 
-           server_tx: EventLoopSender<server::Event>) -> Proxy {
+           server_tx: mio::Sender<server::Event>) -> Proxy {
         Proxy {
             tx: tx,
             server_tx: server_tx
@@ -59,19 +59,12 @@ impl Proxy {
 }
 
 
-/// Enumeration of events a channel can receive
-// TODO replace with FnOnce
-enum Event {
-    Handle(Box<for<'r> Invoke<(&'r Channel)> + Send>),
-    HandleMut(Box<for<'r> Invoke<(&'r mut Channel)> + Send>),
-}
-/*
+
 /// Enumeration of events a channel can receive
 enum Event {
-    Handle(Box<FnOnce(&Channel) + Send>),
-    HandleMut(Box<FnOnce(&mut Channel) + Send>),
+    Handle(Box<FnBox(&Channel) + Send>),
+    HandleMut(Box<FnBox(&mut Channel) + Send>),
 }
-*/
 
 /// An IRC channel.
 ///
@@ -109,7 +102,7 @@ impl Channel {
     }
     
     /// Starts listening for events in a separate thread
-    pub fn listen(self, server_tx: EventLoopSender<server::Event>) -> Proxy {
+    pub fn listen(self, server_tx: mio::Sender<server::Event>) -> Proxy {
         let (tx, rx) = channel();
         spawn(move || {
             let mut this = self;
@@ -123,14 +116,14 @@ impl Channel {
     /// Message dispatcher
     fn dispatch(&mut self, event: Event) {
         match event {
-            Handle(handler) => handler.invoke(self),
-            HandleMut(handler) => handler.invoke(self),
+            Handle(handler) => handler.call_box((self,)),
+            HandleMut(handler) => handler.call_box((self,)),
         }
     }
     
     /// Getter for channel name
     pub fn name(&self) -> &str {
-        self.name.as_slice()
+        &self.name
     }
     
     /// Getter for topic

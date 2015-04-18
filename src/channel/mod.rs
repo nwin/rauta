@@ -21,7 +21,7 @@ pub use self::member::{Member};
 
 /// Enumeration of possible channel modes
 /// as of http://tools.ietf.org/html/rfc2811#section-4
-#[derive(FromPrimitive, Debug, Hash, PartialEq, Eq, Copy)]
+#[derive(FromPrimitive, Debug, Hash, PartialEq, Eq, Copy, Clone)]
 pub enum ChannelMode {
     /// give "channel creator" status
     ChannelCreator = b'O' as isize,
@@ -62,7 +62,7 @@ pub enum ChannelMode {
 }
 
 /// Actions which determine what to do with a mode
-#[derive(PartialEq, Eq, Debug, Copy)]
+#[derive(PartialEq, Eq, Debug, Copy, Clone)]
 pub enum Action {
     // Add a flag
     Add,

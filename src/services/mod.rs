@@ -2,18 +2,11 @@
 //! NickServ service
 use std::str;
 use std::any::Any;
-use std::error::{Error, FromError};
+use std::error::Error;
 use std::ascii::AsciiExt;
 use std::collections::HashMap;
 
 use mio::Handler;
-
-extern crate sqlite3;
-
-use self::sqlite3::{
-    DatabaseConnection,
-    SqliteError,
-};
 
 use client::Client;
 use server::Server;
@@ -26,13 +19,7 @@ pub use self::nickserv::NickServ;
 
 /// Service error
 pub enum ServiceError {
-	DB(SqliteError)
-}
-
-impl FromError<SqliteError> for ServiceError {
-	fn from_error(err: SqliteError) -> Self {
-		ServiceError::DB(err)
-	}
+	DB // DB Error
 }
 
 /// Determines how to proceed after an service event handler has been processed
