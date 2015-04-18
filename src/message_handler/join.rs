@@ -172,7 +172,7 @@ mod tests {
         let name = c.next().unwrap();
         let pw = p.next();
         assert_eq!(name, "#hello");
-        assert_eq!(pw, Some(b"pass"));
+        assert_eq!(pw, Some("pass".as_bytes()));
         let name = c.next().unwrap();
         let pw = p.next();
         assert_eq!(name, "#world");

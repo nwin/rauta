@@ -74,13 +74,12 @@ static SERVER: Once = ONCE_INIT;
 
 pub fn run_server() {
 	SERVER.call_once(|| {
-		use std::old_io::timer::sleep;
-		use std::time::duration::Duration;
+		use std::thread::sleep_ms;
 		spawn(move || {
 			let mut server = get_test_server();
 			server.run_mio().unwrap();
 		});
-		sleep(Duration::seconds(1));
+		sleep_ms(1000);
 	});
 }
 #[test]

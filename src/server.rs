@@ -194,14 +194,13 @@ impl Handler for Server {
 pub fn get_test_server() -> Server {
     Server {
         host: "localhost".to_string(),
-        ip: "127.0.0.1".to_string(),
-        port: 6667,
+        socket_addr: net::SocketAddr::V4(net::SocketAddrV4::new(net::Ipv4Addr::new(127, 0, 0, 1), 6667)),
         clients: HashMap::new(),
         nicks: HashMap::new(),
         channels: HashMap::new(),
         listener: None,
         server_tx: None,
         client_tx: None,
-        nick_serv: None
+        services: HashMap::new()
     }
 }

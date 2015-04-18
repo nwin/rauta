@@ -146,22 +146,22 @@ mod tests {
         
 	#[test]
 	fn mode_parser() {
-        let msgs = [
-            b"MODE &oulu +b *!*@*.edu +e *!*@*.bu.edu",
-            b"MODE #bu +be *!*@*.edu *!*@*.bu.edu",
-            b"MODE #bu b",
-            b"MODE #test -oo Guest",
+        let msgs: Vec<&[u8]> = vec![
+            &*b"MODE &oulu +b *!*@*.edu +e *!*@*.bu.edu",
+            &*b"MODE #bu +be *!*@*.edu *!*@*.bu.edu",
+            &*b"MODE #bu b",
+            &*b"MODE #test -oo Guest",
             // TODO fix this test
             //b"MODE #bu /i", // Invalid mode should be skipped
-            b"MODE #bu +g", // Invalid mode should be skipped
+            &*b"MODE #bu +g", // Invalid mode should be skipped
         ];
-        let modes = [
-            vec![(Add, BanMask, Some(b"*!*@*.edu")),
-            (Add, ExceptionMask, Some(b"*!*@*.bu.edu"))],
-            vec![(Add, BanMask, Some(b"*!*@*.edu")),
-            (Add, ExceptionMask, Some(b"*!*@*.bu.edu"))],
+        let modes: Vec<Vec<(_, _, Option<&[u8]>)>> = vec![
+            vec![(Add, BanMask, Some(&*b"*!*@*.edu")),
+            (Add, ExceptionMask, Some(&*b"*!*@*.bu.edu"))],
+            vec![(Add, BanMask, Some(&*b"*!*@*.edu")),
+            (Add, ExceptionMask, Some(&*b"*!*@*.bu.edu"))],
             vec![(Show, BanMask, None)],
-            vec![(Remove, OperatorPrivilege, Some(b"Guest")),
+            vec![(Remove, OperatorPrivilege, Some(&*b"Guest")),
             (Remove, OperatorPrivilege, None)],
             //Vec::new(),
             Vec::new(),
