@@ -255,7 +255,8 @@ impl MessageReader {
     }
     fn feed<R: Read>(&mut self, r: &mut R) -> io::Result<&mut MessageReader> {
         use mio::buf::MutBuf;
-        try!(r.read(&mut self.buf.mut_bytes()));
+        let n_bytes = try!(r.read(&mut self.buf.mut_bytes()));
+        self.buf.advance(n_bytes);
         Ok(self)
     }
 
