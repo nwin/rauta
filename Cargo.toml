@@ -11,6 +11,4 @@ authors = ["nwin <nwin@users.noreply.github.com>"]
 log = "*"
 env_logger = "*"
 rand = "*"
-
-[dependencies.mio]
-git = "https://github.com/carllerche/mio"
+mio = "0.3.0"

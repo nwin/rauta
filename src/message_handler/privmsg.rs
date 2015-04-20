@@ -91,7 +91,7 @@ impl MessageHandler for Handler {
                 )}
             },
             Receiver::Nick(ref nick) => if let Continue(server) = server.with_service(
-                nick.to_string(),
+                nick,
                 |service, server| service.process_message(&self.msg, server, &client)
             ) {
                 match server.client_with_name(&nick) {

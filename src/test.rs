@@ -58,7 +58,10 @@ impl Client {
 		assert_eq!(&*self.read_msg(), msg)
 	}
 	pub fn expect_begin(&mut self, msg: &str) {
-		assert!(self.read_msg().starts_with(msg))
+		let response = self.read_msg();
+		if !response.starts_with(msg)  {
+			panic!("expected {} found {}", msg, response)
+		}
 	}
 	pub fn skip_until(&mut self, msg: &str) {
 		loop {

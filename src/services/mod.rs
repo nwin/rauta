@@ -1,6 +1,7 @@
 //! IRC services
 //! NickServ service
 use std::str;
+use std::fmt;
 use std::any::Any;
 use std::error::Error;
 use std::ascii::AsciiExt;
@@ -18,6 +19,7 @@ mod nickserv;
 pub use self::nickserv::NickServ;
 
 /// Service error
+#[derive(Debug)]
 pub enum ServiceError {
 	DB // DB Error
 }
@@ -29,6 +31,7 @@ pub enum Action<'a> {
 }
 
 /// Service command argument
+#[derive(Debug)]
 pub struct Argument {
 	name: String,
 	arg_type: Necessity,
@@ -44,6 +47,7 @@ impl Argument {
 }
 
 /// Service command argument type
+#[derive(Debug)]
 pub enum ArgType {
 	/// Text argument
 	Text,
@@ -59,6 +63,7 @@ impl ArgType {
 }
 
 /// Determines the necessity of the argument
+#[derive(Debug)]
 pub enum Necessity {
 	/// The argument is facultative
 	Optional(ArgType),
@@ -74,6 +79,12 @@ pub struct Command {
 	name: String,
 	args: Vec<Argument>,
 	action: ActionFn,
+}
+
+impl fmt::Debug for Command {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+    	write!(fmt, "Command {{ name: {}, args: {:?}, action: … }}", self.name, self.args)
+    }
 }
 
 impl Command {
@@ -129,7 +140,7 @@ pub trait Service {
 		match message.command() {
 			Some(PRIVMSG) => {
 				let mut params = message.params();
-				let handler = if let Some(cmd) = params.next().and_then(|s| self.find_command(s)) {
+				let handler = if let Some(cmd) = params.nth(1).and_then(|s| self.find_command(s)) {
 					match cmd.parse_args(&mut params) {
 						Ok(args) => Some((cmd.action, args)),
 						Err(()) => None
@@ -140,10 +151,10 @@ pub trait Service {
 				if let Some((action, args)) = handler {
 					action(self.borrow_mut(), server, &client, args)
 				} else {
-					Action::Continue(server)
+					Action::Stop
 				}
 			}
-			_ => Action::Continue(server),
+			_ => Action::Stop,
 		}
 	}
 	fn find_command(&self, cmd: &[u8]) -> Option<&Command> {

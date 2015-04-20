@@ -54,6 +54,8 @@ impl Server {
                 "Cannot get host IP address."
             ))
         };
+        let mut services = HashMap::new();
+        services.insert("NickServ".to_string(), Rc::new(RefCell::new(Box::new(NickServ::new()) as Box<Service>)));
         Ok(Server {
             host: host.to_string(),
             socket_addr: addr,
@@ -63,7 +65,7 @@ impl Server {
             listener: None,
             server_tx: None,
             client_tx: None,
-            services: HashMap::new(),
+            services: services,
         })
     }
 
@@ -144,9 +146,10 @@ impl Server {
     }
 
     /// Getter for services
-    pub fn with_service<'a, F>(&'a mut self, name: String, mut f: F) -> Action<'a>
+    pub fn with_service<'a, F>(&'a mut self, name: &str, mut f: F) -> Action<'a>
     where F: FnMut(&mut Service, &'a mut Server) -> Action<'a> {
-        if let Some(service) = self.services.get(&name).map(|v| v.clone()) {
+        if let Some(service) = self.services.get(name).map(|v| v.clone()) {
+            debug!("calling service {}", name);
             f(&mut **service.borrow_mut(), self)
         } else {
             Action::Continue(self)
@@ -192,6 +195,8 @@ impl Handler for Server {
 
 #[cfg(test)]
 pub fn get_test_server() -> Server {
+    let mut services = HashMap::new();
+    services.insert("NickServ".to_string(), Rc::new(RefCell::new(Box::new(NickServ::new()) as Box<Service>)));
     Server {
         host: "localhost".to_string(),
         socket_addr: net::SocketAddr::V4(net::SocketAddrV4::new(net::Ipv4Addr::new(127, 0, 0, 1), 6667)),
@@ -201,6 +206,6 @@ pub fn get_test_server() -> Server {
         listener: None,
         server_tx: None,
         client_tx: None,
-        services: HashMap::new()
+        services: services
     }
 }
