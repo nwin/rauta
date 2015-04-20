@@ -52,7 +52,7 @@ impl MessageHandler for Handler {
         let topic = self.topic().map(|v| v.to_vec());
         match server.channels().get(self.name()) {
             Some(channel) => {
-                channel.with_ref_mut(move |channel| {
+                let _ = channel.with_ref_mut(move |channel| {
                     let new_topic = match channel.member_with_id(client.id()) {
                         Some(member) => {
                             if channel.has_flag(TopicProtect) && !member.is_op() {
@@ -99,7 +99,7 @@ impl MessageHandler for Handler {
                         channel.set_topic(String::from_utf8_lossy(&*new_topic).into_owned());
 
                     }
-                })
+                });
             }
             None => {
                 client.send_response(ERR_NOSUCHCHANNEL, &[self.name(), "No such channel"])

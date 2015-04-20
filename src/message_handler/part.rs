@@ -44,7 +44,7 @@ impl MessageHandler for Handler {
             if let Some(channel) = server.channels().get(chan_name) {
                 let client = client.clone();
                 let reason = self.reason().map(|v| v.to_vec());
-                channel.with_ref_mut(move |channel| {
+                let _ = channel.with_ref_mut(move |channel| {
                     // Generate part msg
                     let msg = Arc::new(match reason {
                         Some(ref reason) => client.build_raw_msg(PART, &[channel.name().as_bytes(), &*reason], MessageOrigin::User),
@@ -60,7 +60,7 @@ impl MessageHandler for Handler {
                             &[channel.name(), "You're not on that channel"]
                         )
                     }
-                })
+                });
             } else {
                 client.send_response(
                     ERR_NOSUCHCHANNEL, 

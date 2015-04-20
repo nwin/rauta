@@ -67,7 +67,7 @@ impl MessageHandler for Handler {
         for channel in self.channels.iter(msg.params()) {
             let member = Member::new(client.clone());
             let password = passwords.next().map(|v| v.to_vec());
-            match server.channels_mut().entry(channel.to_string()) {
+            let _ = match server.channels_mut().entry(channel.to_string()) {
                 Occupied(entry) => entry.into_mut(),
                 Vacant(entry) => {
                     let mut channel = Channel::new(channel.to_string());
@@ -77,7 +77,7 @@ impl MessageHandler for Handler {
                 }
             }.with_ref_mut(move |channel| {
                 handle_join(channel, member, password)
-            })
+            });
         }
     }
 }

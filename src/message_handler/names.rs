@@ -30,7 +30,7 @@ impl MessageHandler for Handler {
         for chan_name in self.destinations.iter(self.msg.params()) {
             if let Some(channel) = server.channels().get(chan_name) {
                 let client = client.clone();
-                channel.with_ref(move |channel| channel.send_names(&client))
+                let _ = channel.with_ref(move |channel| channel.send_names(&client));
             }
             i += 1;
         }

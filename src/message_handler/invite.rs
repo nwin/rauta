@@ -68,7 +68,7 @@ impl MessageHandler for Handler {
         if let Some(target) = server.client_with_name(self.nick()) {
             if let Some(channel) = server.channels().get(self.channel()) {
                 let target = target.clone();
-                channel.with_ref_mut(move |channel| {
+                let _ = channel.with_ref_mut(move |channel| {
                     if if let Some(member) = channel.member_with_id(client.id()) {
                         if let Some(target_member) = channel.member_with_id(target.id()) {
                             client.send_response(
@@ -106,7 +106,7 @@ impl MessageHandler for Handler {
                     } { // Do this crazy if because of borrowing issues
                         channel.add_to_invite_list(target.id())
                     }
-                })
+                });
             } else { // channel does not exist
                 client.send_response(
                     RPL_INVITING,

@@ -3,7 +3,7 @@
 use std::boxed::FnBox;
 use std::collections::{HashMap, HashSet};
 use std::collections::hash_map;
-use std::sync::mpsc::{Sender, channel};
+use std::sync::mpsc::{self, Sender, channel};
 use std::sync::Arc;
 use std::thread::spawn;
 
@@ -15,53 +15,39 @@ use user::HostMask;
 use client::{ClientId, Client};
 use client_io;
 
-use self::Event::*;
 // Note if pub-using this it gives hides member from the docs
 use super::{Member, Flags, ChannelMode};
 
 
 /// Forwards the message to a channel
 pub struct Proxy {
-    tx: Sender<Event>,
-    server_tx: mio::Sender<server::Event>
+    tx: Sender<Event>
 }
 
 impl Proxy {
-    fn new(tx: Sender<Event>, 
-           server_tx: mio::Sender<server::Event>) -> Proxy {
+    fn new(tx: Sender<Event>) -> Proxy {
         Proxy {
-            tx: tx,
-            server_tx: server_tx
+            tx: tx
         }
     }
 
     /// Evecutes a function on a channel worker thread
-    pub fn with_ref_mut<F>(&self, fn_once: F)
+    pub fn with_ref_mut<F>(&self, fn_once: F) -> Result<(), mpsc::SendError<Event>>
     where F: FnOnce(&mut Channel) + Send + 'static {
-        self.send(Event::HandleMut(box fn_once))
+        self.tx.send(Event::HandleMut(box fn_once))
     }
 
     /// Evecutes a function on a channel worker thread
-    pub fn with_ref<F>(&self, fn_once: F)
+    pub fn with_ref<F>(&self, fn_once: F) -> Result<(), mpsc::SendError<Event>>
     where F: FnOnce(&Channel) + Send + 'static {
-        self.send(Event::Handle(box fn_once))
-    }
-
-    /// Sends an event to the channel
-    fn send(&self, event: Event) {
-        match self.tx.send(event) {
-            Ok(_) => {},
-            Err(_) => {
-                //let _ = self.server_tx.send_opt(server::ChannelLost(self.name.clone()));
-            }
-        }
+        self.tx.send(Event::Handle(box fn_once))
     }
 }
 
 
 
 /// Enumeration of events a channel can receive
-enum Event {
+pub enum Event {
     Handle(Box<FnBox(&Channel) + Send>),
     HandleMut(Box<FnBox(&mut Channel) + Send>),
 }
@@ -102,7 +88,7 @@ impl Channel {
     }
     
     /// Starts listening for events in a separate thread
-    pub fn listen(self, server_tx: mio::Sender<server::Event>) -> Proxy {
+    pub fn listen(self, _: mio::Sender<server::Event>) -> Proxy {
         let (tx, rx) = channel();
         spawn(move || {
             let mut this = self;
@@ -110,11 +96,12 @@ impl Channel {
                 this.dispatch(event)
             }
         });
-        Proxy::new(tx, server_tx)
+        Proxy::new(tx)
     }
 
     /// Message dispatcher
     fn dispatch(&mut self, event: Event) {
+        use self::Event::*;
         match event {
             Handle(handler) => handler.call_box((self,)),
             HandleMut(handler) => handler.call_box((self,)),
