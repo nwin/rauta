@@ -416,7 +416,6 @@ impl<'a> ListSender<'a> {
         }
     }
 }
-#[unsafe_destructor]
 impl<'a> Drop for ListSender<'a> {
     fn drop(&mut self) {
         self.receiver.send_response(self.end_code, &[self.name, "End of list"])

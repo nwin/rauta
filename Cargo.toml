@@ -1,6 +1,6 @@
 [package]
 name = "rauta"
-version = "0.0.1"
+version = "0.1.0"
 authors = ["nwin <nwin@users.noreply.github.com>"]
 
 #[lib]
@@ -8,7 +8,7 @@ authors = ["nwin <nwin@users.noreply.github.com>"]
 #path = "src/main.rs"
 
 [dependencies]
-log = "*"
-env_logger = "*"
-rand = "*"
+log = "0.3.0"
+env_logger = "0.3.0"
+rand = "0.3.0"
 mio = "0.3.0"

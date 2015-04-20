@@ -165,7 +165,3 @@ pub trait Service {
 		}
 	}
 }
-
-fn test() {
-	let _foo: Box<Service> = box nickserv::NickServ::new();
-}

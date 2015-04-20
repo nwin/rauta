@@ -1,22 +1,16 @@
 //! An IRC server
 
+#![cfg_attr(test, feature(test))]
+
 #![feature(collections)]
-#![feature(test)]
 #![feature(libc)]
-#![feature(io)]
-#![feature(old_io)]
-#![feature(net)]
 #![feature(std_misc)]
 #![feature(core)]
 #![feature(box_syntax)]
-#![feature(unboxed_closures)]
-#![feature(unsafe_destructor)]
-#![allow(dead_code)]
-#![allow(unused_imports)]
-#![allow(unused_features)]
-#![allow(missing_docs)]
 #![feature(slice_patterns)]
 #![feature(lookup_host)]
+#![allow(unused_imports)]
+#![allow(missing_docs)]
 
 #[macro_use]
 extern crate log;
