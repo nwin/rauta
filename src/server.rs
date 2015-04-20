@@ -87,6 +87,13 @@ impl Server {
         server_loop.run(self)
     }
 
+    /// Has to be called if the sending to a channel failed.
+    /// This should only happen in the worker thread of the channel paniced.
+    pub fn channel_lost(&mut self, name: &str) {
+        // TODO propagate error
+        self.channels.remove(name);
+    }
+
     /// Sends a response to the client
     pub fn send_response(&self, client: &Client, code: ResponseCode, payload: &[&str]) {
         client.send_response(code, payload);

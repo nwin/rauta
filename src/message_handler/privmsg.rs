@@ -54,7 +54,7 @@ impl MessageHandler for Handler {
                         Some(msg) => client.build_raw_msg(PRIVMSG, &[name.as_bytes(), msg], MessageOrigin::User),
                         None => client.build_msg(PRIVMSG, &[name], MessageOrigin::User),
                     });
-                    let _ = channel.with_ref(move |channel| {
+                    channel.with_ref(move |channel| {
                         use channel::ChannelMode::*;
                         let maybe_member = channel.member_with_id(client.id());
                         if channel.has_flag(MemberOnly) || channel.has_flag(Moderated) {
@@ -83,13 +83,16 @@ impl MessageHandler for Handler {
                                 None => channel.broadcast_raw(msg)
                             }
                         }
-                    });
+                    })
                 },
-                None => if ! self.is_notice() { client.send_response(
-                    ERR_NOSUCHNICK,
-                    &[name, "No such nick/channel"]
-                )}
-            },
+                None => {
+                    if !self.is_notice() { client.send_response(
+                        ERR_NOSUCHNICK,
+                        &[name, "No such nick/channel"]
+                    )};
+                    Ok(())
+                }
+            }.unwrap_or_else(|_| server.channel_lost(name)),
             Receiver::Nick(ref nick) => if let Continue(server) = server.with_service(
                 nick,
                 |service, server| service.process_message(&self.msg, server, &client)

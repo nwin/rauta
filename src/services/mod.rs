@@ -1,5 +1,6 @@
 //! IRC services
 //! NickServ service
+use std::borrow::BorrowMut;
 use std::str;
 use std::fmt;
 use std::any::Any;
@@ -131,10 +132,9 @@ impl Command {
 }
 
 /// Trait for IRC services
-pub trait Service {
+pub trait Service: BorrowMut<Any> {
 	fn add_command(&mut self, Command);
 	fn commands(&self) -> &[Command];
-	fn borrow_mut(&mut self) -> &mut Any;
 
 	fn process_message<'a>(&mut self, message: &Message, server: &'a mut Server, client: &Client) -> Action<'a> {
 		match message.command() {

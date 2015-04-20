@@ -1,4 +1,5 @@
 //! NickServ service
+use std::borrow::{Borrow, BorrowMut};
 use std::str;
 use std::any::Any;
 use std::ascii::AsciiExt;
@@ -23,7 +24,15 @@ impl Service for NickServ {
 	fn commands<'a>(&'a self) -> &[Command] {
 		&*self.commands
 	}
+}
+
+impl BorrowMut<Any> for NickServ {
 	fn borrow_mut(&mut self) -> &mut Any {
+		self
+	}
+}
+impl Borrow<Any> for NickServ {
+	fn borrow(&self) -> &Any {
 		self
 	}
 }

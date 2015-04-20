@@ -31,8 +31,9 @@ pub mod misc;
 pub mod client_io;
 
 #[cfg(test)]
-mod test;
+pub mod test;
 
+#[cfg(not(test))]
 fn main() {
     env_logger::init().unwrap();
 

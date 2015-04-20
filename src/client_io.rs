@@ -217,8 +217,8 @@ impl Handler for Worker {
 
 #[derive(Debug)]
 enum MessageError {
-    TooLong,
-    Malformed,
+    MessageTooLong,
+    MalformedMessage,
     IoError(io::Error)
 }
 
@@ -243,6 +243,9 @@ impl Default for MessageReader {
     }
 }
 
+/// Reads IRC messages from a stream
+///
+/// Ensures that the message does not exceed 512 bytes.
 impl MessageReader {
     fn new(capacity: usize) -> MessageReader {
         MessageReader {
@@ -253,13 +256,22 @@ impl MessageReader {
             got_r: false
         }
     }
-    fn feed<R: Read>(&mut self, r: &mut R) -> io::Result<&mut MessageReader> {
+
+    /// Tries to re-fill the internal buffer
+    ///
+    /// The returns MessageReader is an Interator over the messages that can be 
+    /// reconstructed from the internal buffer.
+    pub fn feed<R: Read>(&mut self, r: &mut R) -> io::Result<&mut MessageReader> {
         use mio::buf::MutBuf;
         let n_bytes = try!(r.read(&mut self.buf.mut_bytes()));
         self.buf.advance(n_bytes);
         Ok(self)
     }
 
+    /// Resets the internal error state
+    ///
+    /// If the reader is in an error state all characters are skipped until
+    /// a message separator is found ("\r\n")
     fn clear_error(&mut self) {
         use mio::buf::Buf;
         let reader = &mut self.buf;
@@ -306,19 +318,19 @@ impl Iterator for MessageReader {
                         self.got_r = false;
                         Ok(Some(()))
                     } else {
-                        Err(Malformed)
+                        Err(MalformedMessage)
                     }
                 }
                 // This should no happen
                 0 => {
-                    Err(Malformed)
+                    Err(MalformedMessage)
                 }
                 c => {
                     self.message.push(c);
                     if self.message.len() < capacity {
                         Ok(None)
                     } else {
-                        Err(TooLong)
+                        Err(MessageTooLong)
                     }
                 }
             };
