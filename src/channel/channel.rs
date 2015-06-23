@@ -394,11 +394,11 @@ impl<'a> ListSender<'a> {
         match self.prefix {
             Some(prefix) => self.receiver.send_response(
                 self.list_code, 
-                &*(vec![prefix, self.name] + line)
+                &*({let mut v = vec![prefix, self.name]; v.push_all(line); v})
             ),
             None => self.receiver.send_response(
-                self.list_code, 
-                &*(vec![self.name] + line)
+                self.list_code,
+                &*({let mut v = vec![self.name]; v.push_all(line); v})
             )
         }
     }
