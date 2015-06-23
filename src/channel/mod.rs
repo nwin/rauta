@@ -4,7 +4,7 @@ mod member;
 mod channel;
 
 use std::collections::HashSet;
-use std::num::FromPrimitive;
+use num::FromPrimitive;
 
 use protocol::{Params};
 
@@ -19,9 +19,50 @@ pub use self::member::{Member};
 // + for voiced users – to get this, you need to be +v in the channel
 // Users with no status in the channel will have no nick prefix
 
+/// Helper macro for internal use by `enum_from_primitive!`.
+macro_rules! enum_from_primitive_impl_ty {
+    ($meth:ident, $ty:ty, $name:ident, $( $variant:ident )*) => {
+        #[allow(non_upper_case_globals, unused)]
+        fn $meth(n: $ty) -> Option<Self> {
+            $( if n == $name::$variant as $ty {
+                Some($name::$variant)
+            } else )* {
+                None
+            }
+        }
+    };
+}
+
+/// Helper macro for internal use by `enum_from_primitive!`.
+macro_rules! enum_from_primitive_impl {
+    ($name:ident, $( $variant:ident )*) => {
+        impl FromPrimitive for $name {
+            enum_from_primitive_impl_ty! { from_i64, i64, $name, $( $variant )* }
+            enum_from_primitive_impl_ty! { from_u64, u64, $name, $( $variant )* }
+        }
+    };
+}
+
+macro_rules! enum_from_primitive {
+    (
+        $( #[$enum_attr:meta] )*
+        pub enum $name:ident {
+            $( $( #[$variant_attr:meta] )+ $variant:ident = $discriminator:expr ),+
+        }
+    ) => {
+        $( #[$enum_attr] )*
+        pub enum $name {
+            $( $( #[$variant_attr] )* $variant = $discriminator),+
+        }
+        enum_from_primitive_impl! { $name, $( $variant )+ }
+    };
+}
+
+
 /// Enumeration of possible channel modes
 /// as of http://tools.ietf.org/html/rfc2811#section-4
-#[derive(FromPrimitive, Debug, Hash, PartialEq, Eq, Copy, Clone)]
+enum_from_primitive! {
+#[derive(Debug, Hash, PartialEq, Eq, Copy, Clone)]
 pub enum ChannelMode {
     /// give "channel creator" status
     ChannelCreator = b'O' as isize,
@@ -35,8 +76,7 @@ pub enum ChannelMode {
     InviteOnly = b'i' as isize,
     /// toggle the moderated channel
     Moderated = b'm' as isize,
-    /// toggle the no messages to channel from clients on the
-    /// outside
+    /// toggle the no messages to channel from clients on the outside
     MemberOnly = b'n' as isize,
     /// toggle the quiet channel flag
     Quiet = b'q' as isize,
@@ -56,11 +96,10 @@ pub enum ChannelMode {
     BanMask = b'b' as isize,
     /// set/remove an exception mask to override a ban mask
     ExceptionMask = b'e' as isize,
-    /// set/remove an invitation mask to automatically override
-    /// the invite-only flag
+    /// set/remove an invitation mask to automatically override the invite-only flag
     InvitationMask = b'I' as isize
 }
-
+}
 /// Actions which determine what to do with a mode
 #[derive(PartialEq, Eq, Debug, Copy, Clone)]
 pub enum Action {

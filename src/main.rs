@@ -16,6 +16,7 @@
 extern crate log;
 extern crate env_logger;
 
+extern crate num;
 extern crate rand;
 extern crate mio;
 
