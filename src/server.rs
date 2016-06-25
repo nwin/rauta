@@ -75,9 +75,14 @@ impl Server {
         self.server_tx = Some(server_loop.channel());
         self.client_tx = Some(client_loop.channel());
 		// TODO listen to all IP addresses (move lookup_host to here)
-		self.listener = Some(try!(mio::tcp::TcpListener::bind(self.socket_addr)));//&*format!("{}:{}", self.ip, self.port))));
+		self.listener = Some(try!(mio::tcp::TcpListener::bind(&self.socket_addr)));//&*format!("{}:{}", self.ip, self.port))));
 		info!("started listening on {} ({})", self.socket_addr, self.host);
-        try!(server_loop.register(self.listener.as_ref().unwrap(), Token(self.socket_addr.port() as usize)));
+        try!(server_loop.register(
+            self.listener.as_ref().unwrap(),
+            Token(self.socket_addr.port() as usize),
+            mio::EventSet::readable(),
+            mio::PollOpt::edge()
+        ));
         let host = Arc::new(self.host.clone());
         let tx = server_loop.channel();
         spawn(move || {
@@ -193,8 +198,8 @@ impl Handler for Server {
             }
         }
     }
-    fn readable(&mut self, _: &mut EventLoop<Server>, _: Token, _: mio::ReadHint) {
-        if let Ok((stream, _)) = self.listener.as_ref().unwrap().accept() {
+    fn ready(&mut self, _: &mut EventLoop<Server>, _: Token, _: mio::EventSet) {
+        if let Ok(Some((stream, _))) = self.listener.as_ref().unwrap().accept() {
             let _ = self.client_tx.as_ref().unwrap().send(client_io::Event::NewConnection(stream));
         } 
     }

@@ -92,9 +92,7 @@ pub fn get_nameinfo(peer_socket: net::SocketAddr) -> String {
             },
             net::SocketAddr::V6(addr) => {
                 let [a, b, c, d, e, f, g, h] = addr.ip().segments();
-                let addr = in6_addr {
-                    s6_addr: [a, b, c, d, e, f, g, h]
-                };
+                let addr =  transmute([a, b, c, d, e, f, g, h]);
                 let sockaddr = new_sockaddr_in6(port, addr);
                 getnameinfo(transmute(&sockaddr), size_of::<sockaddr_in6>() as socklen_t, 
                             buf.as_mut_ptr() as *mut i8, HOSTLEN as u32, transmute(0usize), 0, 0)

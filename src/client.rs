@@ -84,11 +84,11 @@ impl Client {
             let last = payload.len() - 1;
             for item in payload[..last].iter() {
                 msg.push(b' ');
-                msg.push_all(item)
+                msg.extend(*item)
             }
-            msg.push_all(b" :");
-            msg.push_all(payload[last]);
-            msg.push_all(b"\r\n");
+            msg.extend(b" :");
+            msg.extend(payload[last]);
+            msg.extend(b"\r\n");
         }
         msg
     }

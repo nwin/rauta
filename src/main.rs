@@ -2,13 +2,10 @@
 
 #![cfg_attr(test, feature(test))]
 
-#![feature(collections)]
-#![feature(libc)]
-#![feature(std_misc)]
-#![feature(core)]
 #![feature(box_syntax)]
 #![feature(slice_patterns)]
 #![feature(lookup_host)]
+#![feature(fnbox)]
 #![allow(unused_imports)]
 #![allow(missing_docs)]
 
@@ -16,6 +13,7 @@
 extern crate log;
 extern crate env_logger;
 
+extern crate bytes;
 extern crate num;
 extern crate rand;
 extern crate mio;
@@ -40,5 +38,5 @@ fn main() {
 
     let server = box server::Server::new("localhost");
 
-    let _ = server.map(|mut s| s.run_mio()).ok().unwrap();
+    let _ = server.map(|mut s| s.run_mio()).unwrap();
 }

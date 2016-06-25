@@ -9,9 +9,9 @@ use std::mem;
 use std::sync::Arc;
 use std::default::Default;
 
-use mio::{self, EventLoop, Handler, Token, TryRead, TryWrite, PollOpt, Interest};
+use mio::{self, EventLoop, Handler, Token, TryRead, TryWrite, PollOpt, EventSet};
 use mio::tcp::TcpStream;
-use mio::buf::{RingBuf};
+use bytes::RingBuf;
 
 use protocol::{Message, Command};
 use protocol::ResponseCode::*;
@@ -70,9 +70,9 @@ impl Worker {
             self.host.clone(),
         );
         let token = id.token();
-        if let Ok(()) = event_loop.register_opt(
+        if let Ok(()) = event_loop.register(
                 &mut stream, token, 
-                Interest::readable() | Interest::writable() | Interest::hup(), 
+                EventSet::readable() | EventSet::writable() | EventSet::hup(), 
                 PollOpt::edge()
         ) {
             self.streams.insert(token, stream);
@@ -100,47 +100,10 @@ impl Worker {
         self.clients.remove(token);
         self.buffers.remove(token);
     }
-}
-
-impl Handler for Worker {
-    type Timeout = ();
-    type Message = Event;
-
-    fn notify(&mut self, event_loop: &mut EventLoop<Worker>, msg: Event) {
-        use self::Event::*;
-        match msg {
-            NewConnection(stream) => {
-                // If it didn’t work the client closed the connection, never mind.
-                let _ = self.register_connection(stream, event_loop);
-            },
-            Disconnect(id) => {
-                self.unregister_connection(&id.token(), event_loop);
-            },
-            Shutdown => {
-                event_loop.shutdown()
-            },
-            Message(id, vec) => {
-                debug!(" sending message {}", String::from_utf8_lossy(&vec));
-                let token = id.token();
-                if self.buffers.contains_key(&token) {
-                    self.buffers.get_mut(&token).unwrap().push_back(Cursor::new(vec));
-                    self.writable(event_loop, token)
-                }
-            },
-            SharedMessage(id, vec) => {
-                debug!(" sending message {}", String::from_utf8_lossy(&vec));
-                // TODO do not clone, Cursor should also work for soon
-                let token = id.token();
-                if self.buffers.contains_key(&token) {
-                    self.buffers.get_mut(&token).unwrap().push_back(Cursor::new((*vec).clone()));
-                    self.writable(event_loop, token)
-                }
-            }
-        }
-    }
-    fn readable(&mut self, event_loop: &mut EventLoop<Worker>, token: Token, hint: mio::ReadHint) {
+    
+    fn readable(&mut self, event_loop: &mut EventLoop<Worker>, token: Token, events: mio::EventSet) {
         use protocol::Command::*;
-        if hint.is_error() || hint.is_hup() {
+        if events.is_error() || events.is_hup() {
             if let Some(client) = self.clients.get(&token) {
                 // The quit message will trigger a disconnect event
                 let _ = self.server_tx.send(server::Event::InboundMessage(client.id(), Message::new(client.build_msg(
@@ -187,6 +150,7 @@ impl Handler for Worker {
             }
         }
     }
+    
     fn writable(&mut self, _: &mut EventLoop<Worker>, token: Token) {
         if let Some(stream) = self.streams.get_mut(&token) {
             let buffers = &mut self.buffers.get_mut(&token).unwrap();
@@ -211,6 +175,52 @@ impl Handler for Worker {
                     let _ = buffers.remove(0);
                 }
             }
+        }
+    }
+}
+
+impl Handler for Worker {
+    type Timeout = ();
+    type Message = Event;
+
+    fn notify(&mut self, event_loop: &mut EventLoop<Worker>, msg: Event) {
+        use self::Event::*;
+        match msg {
+            NewConnection(stream) => {
+                // If it didn’t work the client closed the connection, never mind.
+                let _ = self.register_connection(stream, event_loop);
+            },
+            Disconnect(id) => {
+                self.unregister_connection(&id.token(), event_loop);
+            },
+            Shutdown => {
+                event_loop.shutdown()
+            },
+            Message(id, vec) => {
+                debug!(" sending message {}", String::from_utf8_lossy(&vec));
+                let token = id.token();
+                if self.buffers.contains_key(&token) {
+                    self.buffers.get_mut(&token).unwrap().push_back(Cursor::new(vec));
+                    self.writable(event_loop, token)
+                }
+            },
+            SharedMessage(id, vec) => {
+                debug!(" sending message {}", String::from_utf8_lossy(&vec));
+                // TODO do not clone, Cursor should also work for soon
+                let token = id.token();
+                if self.buffers.contains_key(&token) {
+                    self.buffers.get_mut(&token).unwrap().push_back(Cursor::new((*vec).clone()));
+                    self.writable(event_loop, token)
+                }
+            }
+        }
+    }
+    
+    fn ready(&mut self, event_loop: &mut EventLoop<Self>, token: Token, events: EventSet) {
+        if events.is_writable() {
+            self.writable(event_loop, token)
+        } else if events.is_readable() {
+            self.readable(event_loop, token, events)
         }
     }
 }
@@ -262,9 +272,9 @@ impl MessageReader {
     /// The returns MessageReader is an Interator over the messages that can be 
     /// reconstructed from the internal buffer.
     pub fn feed<R: Read>(&mut self, r: &mut R) -> io::Result<&mut MessageReader> {
-        use mio::buf::MutBuf;
-        let n_bytes = try!(r.read(&mut self.buf.mut_bytes()));
-        self.buf.advance(n_bytes);
+        use bytes::MutBuf;
+        let n_bytes = try!(r.read(unsafe {&mut self.buf.mut_bytes()}));
+        unsafe { self.buf.advance(n_bytes) };
         Ok(self)
     }
 
@@ -273,7 +283,7 @@ impl MessageReader {
     /// If the reader is in an error state all characters are skipped until
     /// a message separator is found ("\r\n")
     fn clear_error(&mut self) {
-        use mio::buf::Buf;
+        use bytes::Buf;
         let reader = &mut self.buf;
         let mut got_r = false;
         if self.error {
@@ -299,7 +309,7 @@ impl Iterator for MessageReader {
     type Item = Result<Vec<u8>, MessageError>;
 
     fn next(&mut self) -> Option<Result<Vec<u8>, MessageError>> {
-        use mio::buf::Buf;
+        use bytes::Buf;
         use self::MessageError::*;
         self.clear_error();
         let capacity = self.capacity;

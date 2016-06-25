@@ -22,7 +22,7 @@ mod names;
 mod privmsg;
 
 /// Message handler trait
-pub trait MessageHandler {
+pub trait MessageHandler: Sized {
     /// Construct a new message handler from a message
     ///
     /// If the message is malformed an error is  returned 

@@ -45,7 +45,7 @@ impl Message {
         let mut message = &*self.message;
         // Tag section starts with `b'@'` and ends with `b' '`
         let prefix_start = if message.starts_with(&[b'@']) {
-            let prefix_start = match message.position_elem(&b' ') { 
+            let prefix_start = match message.iter().position(|&v| v == b' ') { 
                 Some(v) => v + 1, 
                 None => return Err("Message does not contain a command.") 
             };
@@ -57,7 +57,7 @@ impl Message {
         };
         // Prefix starts with `b':'` and ends with `b' '`
         self.prefix = if message.starts_with(&[b':']) {
-            let prefix_end = match message.position_elem(&b' ') { 
+            let prefix_end = match message.iter().position(|&v| v == b' ') { 
                 Some(v) => v, 
                 None => return Err("Message does not contain a command.") 
             };
